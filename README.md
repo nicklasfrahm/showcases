@@ -10,11 +10,37 @@ docker-compose up
 
 Navigate to [localtest.me](http://localtest.me) and enjoy.
 
+**DISCLAIMER:** The application does not have a visual UI and is mostly a demonstration and proof of concept for the proposed microservice architecture. You can test the application by sending the following requests while watching the log output of the `audit` service:
+
+- `GET localtest.me/posts`
+- `POST localtest.me/posts`
+- `PUT localtest.me/posts/1`
+- `POST localtest.me/posts/1`
+- `DELETE localtest.me/posts/1`
+
+Observe the subject / topic shown left of the `>>` and the `type` attribute of the cloud event. The gateway transforms the RESTful message to [CloudEvents](https://cloudevents.io/) for downstream processing. The convention followed is a classical RESTful CRUD interface.
+
 ## Architecture
 
 The diagram below is the end-to-end architecture of the application showing the functional architecture building blocks and their connections.
 
 ![End-to-end architecture](./docs/virtual-white-board-e2e.png)
+
+Below you may find the proposed tech stacks for the different services.
+
+| Service        | Technologies                                        |
+| -------------- | --------------------------------------------------- |
+| Web Interface  | Svelte, MaterialUI, Static Hosting                  |
+| Broker / Queue | NATS                                                |
+| HTTP API       | Go, Fiber, NATS                                     |
+| WS API         | Go, Fiber, NATS                                     |
+| AuhtX          | Go, [casbin](https://casbin.org/), Redis, JWT, NATS |
+| Users          | Go, PostgreSQL, NATS                                |
+| Likes          | Go, Redis, NATS                                     |
+| Posts          | Go, PostgreSQL, NATS                                |
+| Conversations  | Go, MongoDB, NATS                                   |
+| Sessions       | Go, Redis, NATS                                     |
+| Mail           | Go, SendGrid, NATS                                  |
 
 ### Future improvements
 
