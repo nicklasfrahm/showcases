@@ -7,6 +7,7 @@ import (
 var (
 	InvalidEndpoint = NewServiceError(404, "Invalid Endpoint")
 	UnexpectedError = NewServiceError(500, "Unexpected Error")
+	InvalidService  = NewServiceError(503, "Invalid Service")
 )
 
 // ServiceError describes required information in case of an error.

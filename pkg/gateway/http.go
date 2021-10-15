@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"time"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/gofiber/fiber/v2"
@@ -64,14 +65,15 @@ func HTTP(svc *service.Service) func(*fiber.Ctx) error {
 			return err
 		}
 
-		// TODO: Use NATS request instead.
-		err = svc.Broker.Publish(meta.Subject, encodedEvent)
+		msg, err := svc.Broker.Request(meta.Subject, encodedEvent, 10*time.Millisecond)
 		if err != nil {
-			svc.Logger.Info().Msg(err.Error())
+			return errs.InvalidService
 		}
 
+		// TODO: Set HTTP status based on service response.
+
 		c.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSONCharsetUTF8)
-		return c.Send(encodedEvent)
+		return c.Send(msg.Data)
 	}
 }
 
