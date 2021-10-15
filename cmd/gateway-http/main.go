@@ -2,7 +2,6 @@ package main
 
 import (
 	"os"
-	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/compress"
@@ -10,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/helmet/v2"
 
+	"github.com/nicklasfrahm/virtual-white-board/pkg/gateway"
 	"github.com/nicklasfrahm/virtual-white-board/pkg/middleware"
 	"github.com/nicklasfrahm/virtual-white-board/pkg/service"
 )
@@ -33,11 +33,7 @@ func main() {
 		svc.Logger.Fatal().Msgf("Missing required environment variable: PORT")
 	}
 
-	natsUri := os.Getenv("NATS_URI")
-
-	svc.UseBroker(natsUri)
-
-	// TODO: Create abstraction for this.
+	svc.UseBroker(os.Getenv("NATS_URI"))
 
 	// Create router.
 	app := fiber.New(fiber.Config{
@@ -50,6 +46,7 @@ func main() {
 	app.Use(helmet.New())
 	app.Use(cors.New(cors.Config{
 		AllowHeaders:     "Accept,Authorization,Content-Type,X-CSRF-Token",
+		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS",
 		AllowCredentials: true,
 		MaxAge:           600,
 	}))
@@ -59,17 +56,8 @@ func main() {
 	app.Use(middleware.RedirectSlashes())
 	app.Use(middleware.ContentType(fiber.MIMEApplicationJSONCharsetUTF8))
 
-	app.Use(func(c *fiber.Ctx) error {
-		// Publish normalized path to NATS.
-		topic := strings.ReplaceAll(c.Path()[1:], "/", ".")
-
-		err := svc.Broker.Publish(topic, []byte("hello"))
-		if err != nil {
-			svc.Logger.Info().Msg(err.Error())
-		}
-
-		return c.Status(200).SendString(topic)
-	})
+	// Mount gateway handler.
+	app.Use(gateway.HTTP(svc))
 
 	// Configure fallback route.
 	app.Use(middleware.NotFound())

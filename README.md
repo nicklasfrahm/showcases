@@ -12,7 +12,9 @@ Navigate to [localtest.me](http://localtest.me) and enjoy.
 
 ## Architecture
 
-_TODO: Insert end-to-end architecture diagram._
+The diagram below is the end-to-end architecture of the application showing the functional architecture building blocks and their connections.
+
+![End-to-end architecture](./docs/virtual-white-board-e2e.png)
 
 ### Future improvements
 
@@ -55,11 +57,11 @@ There are however also some disadvantages:
 - Garbage collector is non-deterministic and may introduce latency, which can be a problem in low-latency, real-time applications
 - No generics — [yet](https://bitfieldconsulting.com/golang/generics)
 
-_TODO: Describe more why microservices are using NATS and event-based communication via the pub-/sub-pattern._
+_TODO: Describe more why microservices are using NATS and event-based communication via the pub-/sub-pattern. Keywords: Loose coupling, ease of service discovery._
 
 _TODO: Elaborate why the [Zalando's RESTful API guidelines](https://opensource.zalando.com/restful-api-guidelines/) are used._
 
-_TODO: Add note that explains that this repository is not the ideal setup for microservices. Microservices aim for lose coupling and high cohesion. Sharing code and with this also the DRY (don't repeat yourself) paradigm is therefore strongly discouraged. This ensures service stability and prevents building a distributed monolith._
+_TODO: Add note that explains that this repository is not the ideal setup for microservices. Microservices aim for loose coupling and high cohesion. Sharing code and with this also the DRY (don't repeat yourself) paradigm is therefore strongly discouraged. This ensures service stability and prevents building a distributed monolith._
 
 ## Deployment
 

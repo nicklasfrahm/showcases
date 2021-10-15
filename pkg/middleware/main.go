@@ -6,12 +6,12 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/nicklasfrahm/virtual-white-board/pkg/err"
+	"github.com/nicklasfrahm/virtual-white-board/pkg/errs"
 )
 
 // ErrorResponse is the payload sent in the case of an error.
 type ErrorResponse struct {
-	Error err.ServiceError `json:"error"`
+	Error errs.ServiceError `json:"error"`
 }
 
 // ContentType is a middleware to set the "Content-Type" header.
@@ -24,16 +24,16 @@ func ContentType(contentType string) func(*fiber.Ctx) error {
 
 // Error returns a middleware to handler errors during requests.
 func Error() func(*fiber.Ctx, error) error {
-	return func(c *fiber.Ctx, e error) error {
+	return func(c *fiber.Ctx, err error) error {
 		// Handle known service error types.
-		if svcErr, ok := e.(*err.ServiceError); ok {
+		if svcErr, ok := err.(*errs.ServiceError); ok {
 			return c.Status(svcErr.Status).JSON(ErrorResponse{
 				Error: *svcErr,
 			})
 		}
 
 		// Return default error.
-		defErr := err.UnexpectedError
+		defErr := errs.UnexpectedError
 		return c.Status(defErr.Status).JSON(ErrorResponse{
 			Error: *defErr,
 		})
@@ -43,7 +43,7 @@ func Error() func(*fiber.Ctx, error) error {
 // NotFound returns a middlware for endpoints that do not exist.
 func NotFound() func(*fiber.Ctx) error {
 	return func(c *fiber.Ctx) error {
-		return err.InvalidEndpoint
+		return errs.InvalidEndpoint
 	}
 }
 

@@ -1,4 +1,4 @@
-package err
+package errs
 
 import (
 	"net/http"
@@ -15,7 +15,7 @@ type ServiceError struct {
 	Status  int    `json:"status"`
 	Message string `json:"message"`
 
-	Err error
+	Err error `json:"-"`
 }
 
 func (se *ServiceError) Error() string {
