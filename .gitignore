@@ -1,0 +1,8 @@
+# Local directory to persist database state between restarts.
+.data/
+
+# Compiled service binaries.
+bin/
+
+# Environment file.
+.env

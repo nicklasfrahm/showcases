@@ -1,0 +1,81 @@
+# Note: Ideally, this should live in `deployments/`, but we keep it here for simplicity.
+version: "3"
+
+networks:
+  ingress:
+    driver: bridge
+  nats:
+  redis:
+  postgres:
+
+services:
+  nats:
+    image: nats:alpine
+    restart: always
+    command: --jetstream --store_dir /var/lib/nats
+    volumes:
+      - ${PWD}/.data/nats:/var/lib/nats
+    ports:
+      - "4222:4222"
+    networks:
+      - nats
+      # Should be removed in production, but useful for debugging.
+      - ingress
+
+  redis:
+    image: redis:alpine
+    restart: always
+    command: redis-server /etc/redis/redis.conf
+    ports:
+      - "6379:6379"
+    volumes:
+      - $PWD/.data/redis:/var/lib/redis
+      - $PWD/configs/redis.conf:/etc/redis/redis.conf
+    networks:
+      # - ingress
+      - redis
+
+  # postgres:
+  #   image: postgres:alpine
+  #   restart: always
+  #   ports:
+  #     - "5123:5123"
+  #   volumes:
+  #     - ${PWD}/.data/postgres:/var/lib/postgresql
+  #   networks:
+  #     - postgres
+  #   environment:
+  #     - DEBUG
+
+  audit:
+    depends_on:
+      - nats
+    build:
+      context: .
+      dockerfile: build/package/go.Dockerfile
+      args:
+        SERVICE: audit
+        VERSION: ${VERSION:-dev}
+    environment:
+      NATS_URI: nats://nats:4222
+    networks:
+      - nats
+
+  # gateway-http:
+  #   depends_on:
+  #     - nats
+  #   build:
+  #     context: .
+  #     dockerfile: build/package/go.Dockerfile
+  #     args:
+  #       SERVICE: gateway-http
+  #       VERSION: ${VERSION:-dev}
+  #   restart: always
+  #   environment:
+  #     PORT: "8080"
+  #     NATS_URI: nats://nats:4222
+  #   ports:
+  #     - "8080:8080"
+  #   networks:
+  #     - ingress
+  #     - nats
