@@ -61,21 +61,21 @@ services:
     networks:
       - nats
 
-  # gateway-http:
-  #   depends_on:
-  #     - nats
-  #   build:
-  #     context: .
-  #     dockerfile: build/package/go.Dockerfile
-  #     args:
-  #       SERVICE: gateway-http
-  #       VERSION: ${VERSION:-dev}
-  #   restart: always
-  #   environment:
-  #     PORT: "8080"
-  #     NATS_URI: nats://nats:4222
-  #   ports:
-  #     - "8080:8080"
-  #   networks:
-  #     - ingress
-  #     - nats
+  gateway-http:
+    depends_on:
+      - nats
+    build:
+      context: .
+      dockerfile: build/package/go.Dockerfile
+      args:
+        SERVICE: gateway-http
+        VERSION: ${VERSION:-dev}
+    restart: always
+    environment:
+      PORT: "8080"
+      NATS_URI: nats://nats:4222
+    ports:
+      - "80:8080"
+    networks:
+      - ingress
+      - nats
