@@ -5,11 +5,12 @@ import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { Switch, Redirect, Route, BrowserRouter } from "react-router-dom";
 import reportWebVitals from "./reportWebVitals";
 import Dashboard from "./Dashboard";
+import EmailSender from "./EmailSender/Home";
 
 const theme = createTheme({
   palette: {
     primary: {
-      main: "#b8dae5",
+      main: "#455a64",
     },
   },
 });
@@ -20,7 +21,8 @@ ReactDOM.render(
     <ThemeProvider theme={theme}>
       <BrowserRouter>
         <Switch>
-          <Route path="/" component={Dashboard} />
+          <Route exact path="/" component={Dashboard} />
+          <Route exact path="/email-sender" component={EmailSender} />
           <Redirect to="/" />
         </Switch>
       </BrowserRouter>
