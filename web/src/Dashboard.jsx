@@ -42,7 +42,7 @@ const Dashboard = () => (
             </Grid>
           </CardMedia>
           <CardContent>
-            <Typography gutterBottom variant="h5" component="div">
+            <Typography gutterBottom variant="h5" component="h2">
               {p.title}
             </Typography>
             <Typography variant="body2" color="text.secondary">

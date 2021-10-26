@@ -1,6 +1,6 @@
-# Virtual White Board
+# Showcases
 
-This application is a virtual white board created for the [CIC hiring test](https://github.com/ibmcicdk/CIC-HIRING-TEST/tree/master/VirtualWhiteBoard). The **Fullstack** role was chosen while doing this assignment.
+A repository containing showcases for my programming and architecture skills.
 
 ## TLDR
 
@@ -24,7 +24,7 @@ Observe the subject / topic shown left of the `>>` and the `type` attribute of t
 
 The diagram below is the end-to-end architecture of the application showing the functional architecture building blocks and their connections.
 
-![End-to-end architecture](./docs/virtual-white-board-e2e.png)
+![End-to-end architecture](./docs/e2e-architecture.png)
 
 Below you may find the proposed tech stacks for the different services.
 
