@@ -52,6 +52,12 @@ jobs:
         uses: crazy-max/ghaction-docker-meta@v1
         with:
           images: ${{ env.REPOSITORY }}-${{ matrix.service }}
+          tags: |
+            type=schedule,pattern=nightly
+            type=ref,event=branch
+            type=ref,event=tag
+            type=ref,event=pr
+            type=sha,prefix=,format=long
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
@@ -146,3 +152,4 @@ jobs:
         env:
           NAMESPACE: ${{ env.NAMESPACE }}
           SERVICE: ${{ matrix.service }}
+          IMAGE: ${{ env.REPOSITORY }}-${{ matrix.service }}:${{ github.sha	}}

@@ -1,19 +1,36 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
+	"net/http"
 	"os"
+	"strings"
 	"time"
 
+	cloudevents "github.com/cloudevents/sdk-go"
+	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"github.com/nats-io/nats.go"
 
 	"github.com/nicklasfrahm/showcases/pkg/broker"
+	"github.com/nicklasfrahm/showcases/pkg/errs"
 	"github.com/nicklasfrahm/showcases/pkg/gateway"
 	"github.com/nicklasfrahm/showcases/pkg/service"
 )
 
 var (
-	name    = "unknown"
-	version = "dev"
+	name      = "unknown"
+	version   = "dev"
+	mapMethod = map[string]string{
+		http.MethodGet:    "read",
+		http.MethodPut:    "update",
+		http.MethodDelete: "delete",
+	}
+	mapListMethod = map[string]string{
+		http.MethodGet:  "find",
+		http.MethodPost: "create",
+	}
 )
 
 func main() {
@@ -42,95 +59,67 @@ func main() {
 
 	// Define endpoint for protocol translation of API v1.
 	svc.GatewayEndpoint("/v1", func(r *service.Request) error {
-		r.Service.Logger.Info().Msgf("%s", r.Ctx.Path())
-		return r.Ctx.Status(200).Send([]byte("OK"))
+		// TODO: Perform topic normalization in broker implementation.
+		// Convert HTTP path to NATS subject.
+		subject, err := pathToSubject(r.Ctx.Method(), r.Ctx.Path())
+		if err != nil {
+			return err
+		}
+
+		// Parse body.
+		var body interface{}
+		if r.Ctx.Method() == http.MethodPost || r.Ctx.Method() == http.MethodPut {
+			if err := r.Ctx.BodyParser(&body); err != nil {
+				svc.Logger.Warn().Msg(err.Error())
+				return err
+			}
+		}
+
+		event := cloudevents.NewEvent()
+		event.SetID(uuid.NewString())
+		event.SetSource("gateway-http")
+		event.SetType(subject)
+		event.SetDataContentType(cloudevents.ApplicationJSON)
+		event.SetData(body)
+
+		// Encode cloud event.
+		encodedEvent, err := json.Marshal(event)
+		if err != nil {
+			return err
+		}
+
+		msg, err := svc.Broker.Request(subject, encodedEvent)
+		if err != nil {
+			return errs.InvalidService
+		}
+
+		// TODO: Set HTTP status based on service response.
+		r.Ctx.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSONCharsetUTF8)
+		return r.Ctx.Send(*msg.Data)
 	})
 
 	// Wait until error occurs or signal is received.
 	svc.Start()
 }
 
-// var (
-// 	requestOne = map[string]string{
-// 		http.MethodGet:    "read",
-// 		http.MethodPut:    "update",
-// 		http.MethodDelete: "delete",
-// 	}
-// 	requestMany = map[string]string{
-// 		http.MethodGet:  "find",
-// 		http.MethodPost: "create",
-// 	}
-// )
+// TODO: Test for edge cases, such as dots in the path.
+func pathToSubject(method string, path string) (string, error) {
+	// Convert resource path to NATS subject.
+	versionedResourceSubject := strings.ReplaceAll(path[1:], "/", ".")
 
-// type Meta struct {
-// 	Subject string
-// 	Verb    string
-// }
+	// Check if the path describes a specific resource or a resource list.
+	// This assumes that thescheme is: /:version/resource/:rid/subresource/:srid.
+	if strings.Count(versionedResourceSubject, ".")%2 != 0 {
+		// Resource lists do not support PUT or DELETE methods.
+		if method == http.MethodPut || method == http.MethodDelete {
+			return "", errs.InvalidEndpoint
+		}
+		return fmt.Sprintf("%s.%s", versionedResourceSubject, mapListMethod[method]), nil
+	}
 
-// func (m *Meta) Type() string {
-// 	return m.Subject + "." + m.Verb
-// }
-
-// // HTTP returns a middlware that converts.
-// func HTTP(svc *service.Service) func(*fiber.Ctx) error {
-// 	return func(c *fiber.Ctx) error {
-// 		// Convert HTTP path to NATS subject.
-// 		meta, err := metaFromPath(c)
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		// Parse body.
-// 		var body interface{}
-// 		if c.Method() == http.MethodPost || c.Method() == http.MethodPut {
-// 			if err := c.BodyParser(&body); err != nil {
-// 				svc.Logger.Warn().Msg(err.Error())
-// 				return err
-// 			}
-// 		}
-
-// 		event := cloudevents.NewEvent()
-// 		event.SetID(uuid.NewString())
-// 		event.SetSource("gateway-http")
-// 		event.SetType(meta.Type())
-// 		event.SetData(fiber.MIMEApplicationJSONCharsetUTF8, body)
-
-// 		// Encode cloud event.
-// 		encodedEvent, err := json.Marshal(event)
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		msg, err := svc.Broker.Request(meta.Subject, encodedEvent, 10*time.Millisecond)
-// 		if err != nil {
-// 			return errs.InvalidService
-// 		}
-
-// 		// TODO: Set HTTP status based on service response.
-
-// 		c.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSONCharsetUTF8)
-// 		return c.Send(msg.Data)
-// 	}
-// }
-
-// // TODO: Test for edge cases, such as dots in the path.
-// func metaFromPath(c *fiber.Ctx) (*Meta, error) {
-// 	// Convert resource path to NATS subject.
-// 	resourceSubject := strings.ReplaceAll(c.Path()[1:], "/", ".")
-
-// 	// Check if the path describes a specific resource or a resource list, assuming the scheme is /resource/:rid/subresource/:srid.
-// 	method := c.Method()
-// 	if strings.Count(resourceSubject, ".")%2 == 0 {
-// 		// Resource lists do not support PUT or DELETE methods.
-// 		if method == http.MethodPut || method == http.MethodDelete {
-// 			return nil, errs.InvalidEndpoint
-// 		}
-// 		return &Meta{Subject: resourceSubject, Verb: requestMany[method]}, nil
-// 	}
-
-// 	// Specific resources do not support the POST method.
-// 	if method == http.MethodPost {
-// 		return nil, errs.InvalidEndpoint
-// 	}
-// 	return &Meta{Subject: resourceSubject, Verb: requestOne[method]}, nil
-// }
+	// Specific resources do not support the POST method.
+	if method == http.MethodPost {
+		return "", errs.InvalidEndpoint
+	}
+	return mapMethod[method], nil
+}

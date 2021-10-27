@@ -25,7 +25,7 @@ cluster:
 # We might re-enable this later, but for now I want
 # to limit the load on my local cluster.
 natsbox:
-  enabled: true
+  enabled: false
 
 # TODO: Configure monitoring via Prometheus.
 exporter:

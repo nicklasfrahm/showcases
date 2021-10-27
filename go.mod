@@ -3,6 +3,7 @@ module github.com/nicklasfrahm/showcases
 go 1.16
 
 require (
+	github.com/cloudevents/sdk-go v1.2.0 // indirect
 	github.com/cloudevents/sdk-go/v2 v2.5.0 // indirect
 	github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e // indirect
 	github.com/go-redis/redis/v8 v8.11.4 // indirect
