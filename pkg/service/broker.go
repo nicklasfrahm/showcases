@@ -5,11 +5,12 @@ import (
 )
 
 var (
-	ErrIllegalUnsubscribe = errors.New("broker: illegal unsubscribe")
+	ErrNoBrokerConfigured = errors.New("broker: no broker configured")
+	ErrIllegalUnsubscribe = errors.New("broker: unsubscribe without prior subscription illegal")
 )
 
-// Message is an abstract interface that provides access to
-// to the specific message type of the broker implementation.
+// Request is an abstract struct that provides access to
+// to high level properties of the broker implementation.
 type Message struct {
 	Endpoint *string
 	Reply    *string
@@ -20,9 +21,8 @@ type Message struct {
 }
 
 // MessageHandler describes the function signature of message
-// handler. Note that we do not need a pointer here as the
-// Message type is an interface.
-type MessageHandler func(m *Message)
+// handler.
+type MessageHandler func(*Message)
 
 // Broker is an abstraction to allow provider agnostic interactions
 // with a event broker or message queue.
@@ -34,6 +34,8 @@ type Broker interface {
 	Publish(string, []byte) error
 
 	Request(string, []byte) (*Message, error)
+
+	// TODO: Abstract message queue / stream API.
 
 	Connect() error
 }

@@ -1,4 +1,4 @@
-package middleware
+package gateway
 
 import (
 	"net/http"
@@ -6,7 +6,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/nicklasfrahm/virtual-white-board/pkg/errs"
+	"github.com/nicklasfrahm/showcases/pkg/errs"
 )
 
 // ErrorResponse is the payload sent in the case of an error.
@@ -14,16 +14,16 @@ type ErrorResponse struct {
 	Error errs.ServiceError `json:"error"`
 }
 
-// ContentType is a middleware to set the "Content-Type" header.
-func ContentType(contentType string) func(*fiber.Ctx) error {
+// MiddlewareContentType is a middleware to set the "Content-Type" header.
+func MiddlewareContentType(contentType string) func(*fiber.Ctx) error {
 	return func(c *fiber.Ctx) error {
 		c.Request().Header.Set(fiber.HeaderContentType, contentType)
 		return c.Next()
 	}
 }
 
-// Error returns a middleware to handler errors during requests.
-func Error() func(*fiber.Ctx, error) error {
+// MiddlewareError returns a middleware to handler errors during requests.
+func MiddlewareError() func(*fiber.Ctx, error) error {
 	return func(c *fiber.Ctx, err error) error {
 		// Handle known service error types.
 		if svcErr, ok := err.(*errs.ServiceError); ok {
@@ -40,16 +40,16 @@ func Error() func(*fiber.Ctx, error) error {
 	}
 }
 
-// NotFound returns a middlware for endpoints that do not exist.
-func NotFound() func(*fiber.Ctx) error {
+// MiddlewareNotFound returns a middlware for endpoints that do not exist.
+func MiddlewareNotFound() func(*fiber.Ctx) error {
 	return func(c *fiber.Ctx) error {
 		return errs.InvalidEndpoint
 	}
 }
 
-// RedirectSlashes slashes redirects routes with a trailing slash
+// MiddlewareRedirectSlashes slashes redirects routes with a trailing slash
 // to the same route without the trailing slash.
-func RedirectSlashes() func(*fiber.Ctx) error {
+func MiddlewareRedirectSlashes() func(*fiber.Ctx) error {
 	return func(c *fiber.Ctx) error {
 		path := c.Path()
 

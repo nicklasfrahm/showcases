@@ -42,6 +42,7 @@ jobs:
       matrix:
         service:
           - audit
+          - gateway-http
     steps:
       - name: Clone repository
         uses: actions/checkout@v2

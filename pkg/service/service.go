@@ -50,7 +50,7 @@ func (svc *Service) UseBroker(b Broker) *Service {
 	svc.Broker = b
 
 	// Pass service pointer to broker.
-	b.Bind(svc)
+	svc.Broker.Bind(svc)
 
 	// Return the service pointer to allow method chaining.
 	return svc
@@ -61,25 +61,41 @@ func (svc *Service) UseGateway(g Gateway) *Service {
 	svc.Gateway = g
 
 	// Pass service pointer to gateway.
-	g.Bind(svc)
+	svc.Gateway.Bind(svc)
 
 	// Return the service pointer to allow method chaining.
 	return svc
 }
 
-func (svc *Service) BrokerEndpoint(endpoint string, messageHandler MessageHandler) {
+func (svc *Service) BrokerEndpoint(endpoint string, messageHandler MessageHandler) *Service {
 	// Ensure that a broker is configured when endpoints are defined.
 	if svc.Broker == nil {
-		svc.Logger.Fatal().Msg("Failed to register broker endpoint: Missing broker configuration")
+		svc.Logger.Fatal().Err(ErrNoBrokerConfigured).Msg("Failed to register broker endpoint")
 	}
 
 	// Subscribe to broker endpoint.
 	if err := svc.Broker.Subscribe(endpoint, messageHandler); err != nil {
-		svc.Logger.Fatal().Msgf("Failed to register broker endpoint: %v", err)
+		svc.Logger.Fatal().Err(err).Msgf("Failed to register broker endpoint")
 	}
 
 	// Log the registered endpoint.
 	svc.Logger.Info().Msg("Endpoint registered: " + endpoint)
+
+	// Return the service pointer to allow method chaining.
+	return svc
+}
+
+func (svc *Service) GatewayEndpoint(endpoint string, requestHandler RequestHandler) *Service {
+	// Ensure that a gateway is configured when endpoints are defined.
+	if svc.Gateway == nil {
+		svc.Logger.Fatal().Err(ErrNoGatewayConfigured).Msg("Failed to register gateway endpoint")
+	}
+
+	// Pass request handler to gateway.
+	svc.Gateway.Route(endpoint, requestHandler)
+
+	// Return the service pointer to allow method chaining.
+	return svc
 }
 
 func (svc *Service) Start() {
@@ -94,8 +110,13 @@ func (svc *Service) Start() {
 	// Connect to broker if configured.
 	if svc.Broker != nil {
 		if err := svc.Broker.Connect(); err != nil {
-			svc.Logger.Fatal().Msgf("Failed to connect to broker: %v", err)
+			svc.Logger.Fatal().Err(err).Msg("Failed to connect to broker")
 		}
+	}
+
+	// Run blocking gateway in goroutine.
+	if svc.Gateway != nil {
+		go svc.Gateway.Listen()
 	}
 
 	// Block until terminated.

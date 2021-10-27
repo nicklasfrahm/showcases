@@ -30,6 +30,8 @@ type NATS struct {
 }
 
 func NewNATS(opts *NATSOptions) service.Broker {
+	// TODO: Create a PreEndpoint and PostEndpoint method for better readability.
+
 	if opts.RequestTimeout == 0 {
 		opts.RequestTimeout = 1000 * time.Millisecond
 	}
@@ -38,6 +40,7 @@ func NewNATS(opts *NATSOptions) service.Broker {
 		options:             opts,
 		activeSubscriptions: make(map[string]*nats.Subscription),
 		queuedSubscriptions: make(map[string]service.MessageHandler),
+		mutex:               &sync.Mutex{},
 	}
 }
 
@@ -47,12 +50,12 @@ func (b *NATS) Bind(svc *service.Service) {
 
 func (b *NATS) Subscribe(endpoint string, messageHandler service.MessageHandler) error {
 	// Queue subscriptions that are made before connecting to the server.
-	if b.jetstreamCtx == nil {
+	if b.natsConn == nil {
 		b.queuedSubscriptions[endpoint] = messageHandler
 		return nil
 	}
 
-	subscription, err := b.jetstreamCtx.Subscribe(endpoint, func(msg *nats.Msg) {
+	subscription, err := b.natsConn.Subscribe(endpoint, func(msg *nats.Msg) {
 		messageHandler(&service.Message{
 			Endpoint: &msg.Subject,
 			Reply:    &msg.Reply,
@@ -82,8 +85,7 @@ func (b *NATS) Unsubscribe(endpoint string) error {
 }
 
 func (b *NATS) Publish(endpoint string, data []byte) error {
-	// TODO: Deal with publish acknowledgement.
-	_, err := b.jetstreamCtx.Publish(endpoint, data)
+	err := b.natsConn.Publish(endpoint, data)
 	return err
 }
 
