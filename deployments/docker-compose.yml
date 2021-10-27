@@ -32,6 +32,20 @@ services:
     networks:
       - nats
 
+  mail:
+    depends_on:
+      - nats
+    build:
+      context: ../
+      dockerfile: ./build/package/service.dockerfile
+      args:
+        SERVICE: mail
+        VERSION: ${VERSION:-dev}
+    environment:
+      BROKER_URI: nats://nats:4222
+    networks:
+      - nats
+
   gateway-http:
     depends_on:
       - nats

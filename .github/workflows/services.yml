@@ -153,3 +153,4 @@ jobs:
           NAMESPACE: ${{ env.NAMESPACE }}
           SERVICE: ${{ matrix.service }}
           IMAGE: ${{ env.REPOSITORY }}-${{ matrix.service }}:${{ github.sha	}}
+          DOMAIN: ${{ secrets.DOMAIN }}
