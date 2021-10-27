@@ -3,5 +3,5 @@ kind: Secret
 metadata:
   name: ${SERVICE}-env
   namespace: ${NAMESPACE}
-data:
+stringData:
   BROKER_URI: nats://nats.${NAMESPACE}.svc:4222

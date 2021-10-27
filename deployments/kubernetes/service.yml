@@ -22,4 +22,4 @@ spec:
             - containerPort: 8080
           envFrom:
             - secretRef:
-              name: ${SERVICE}-env
+                name: ${SERVICE}-env
