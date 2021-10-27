@@ -8,7 +8,7 @@ on:
       - go.mod
       - go.sum
       - Makefile
-      - deployments/container/**
+      - build/package/**
       - .github/workflows/services.yml
       - "**/**.go"
     tags:
@@ -20,7 +20,7 @@ on:
       - go.mod
       - go.sum
       - Makefile
-      - deployments/container/**
+      - build/package/**
       - .github/workflows/services.yml
       - "**/**.go"
   schedule:
@@ -67,7 +67,7 @@ jobs:
       - name: Build and push container image
         uses: docker/build-push-action@v2
         with:
-          file: deployments/container/Dockerfile
+          file: build/package/service.dockerfile
           cache-from: type=registry,ref=${{ env.REPOSITORY }}-${{ matrix.service }}:main
           cache-to: type=inline
           platforms: ${{ env.PLATFORMS }}
