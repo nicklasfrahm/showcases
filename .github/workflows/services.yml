@@ -141,7 +141,7 @@ jobs:
       - name: Install secret containing environment variables
         run: |
           export ENV_VAR_NAME=$(echo ENV_SECRET_${SERVICE} | tr [:lower:] [:upper:] | tr '-' '_' | tr -d '\n')
-          echo ${!ENV_VAR_NAME} | envsubst | kubectl apply -f
+          echo ${!ENV_VAR_NAME} | envsubst | kubectl apply -f -
         env:
           NAMESPACE: ${{ env.NAMESPACE }}
           SERVICE: ${{ matrix.service }}
