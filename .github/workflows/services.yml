@@ -84,11 +84,6 @@ jobs:
   nats:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        service:
-          - audit
-          - gateway-http
     environment:
       name: production
     steps:
