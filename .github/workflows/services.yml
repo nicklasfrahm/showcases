@@ -122,9 +122,6 @@ jobs:
         service:
           - audit
           - gateway-http
-    env:
-      NAMESPACE: ${{ env.NAMESPACE }}
-      SERVICE: ${{ matrix.service }}
     environment:
       name: production
     needs:
@@ -150,12 +147,17 @@ jobs:
         run: |
           export ENV_VAR_NAME=$(echo ENV_SECRET_${SERVICE} | tr [:lower:] [:upper:] | tr '-' '_' | tr -d '\n')
           echo ${!ENV_VAR_NAME} | envsubst | kubectl apply -f
+        env:
+          NAMESPACE: ${{ env.NAMESPACE }}
+          SERVICE: ${{ matrix.service }}
 
       - name: Install service deployment
         run: |
           envsubst < deployments/kubernetes/service-deployment.yml | kubectl apply -f -
           kubectl --namespace=$NAMESPACE rollout status --timeout=60s deployment $SERVICE
         env:
+          NAMESPACE: ${{ env.NAMESPACE }}
+          SERVICE: ${{ matrix.service }}
 
       # - name: Install gateway ingress
       #   run: |
