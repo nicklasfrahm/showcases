@@ -154,3 +154,10 @@ jobs:
           SERVICE: ${{ matrix.service }}
           IMAGE: ${{ env.REPOSITORY }}-${{ matrix.service }}:${{ github.sha	}}
           DOMAIN: ${{ secrets.DOMAIN }}
+          AUTHORIZED_CREDENTIALS: ${{ secrets.AUTHORIZED_CREDENTIALS }}
+          MAIL_SENDER: no-reply@mail.${{ secrets.DOMAIN }}
+          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+          SENDGRID_HTTP_URI: ${{ secrets.SENDGRID_HTTP_URI }}
+          SENDGRID_SMTP_URI: ${{ secrets.SENDGRID_SMTP_URI }}
+          SPARKPOST_API_KEY: ${{ secrets.SPARKPOST_API_KEY }}
+          SPARKPOST_HTTP_URI: ${{ secrets.SPARKPOST_HTTP_URI }}

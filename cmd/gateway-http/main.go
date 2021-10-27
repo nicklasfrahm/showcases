@@ -34,6 +34,16 @@ var (
 )
 
 func main() {
+	// Load authorized users.
+	users := make(map[string]string)
+	usersCreds := strings.Split(os.Getenv("AUTHORIZED_CREDENTIALS"), ",")
+	for _, userCred := range usersCreds {
+		userPass := strings.Split(userCred, ":")
+		if len(userPass) == 2 {
+			users[userPass[0]] = userPass[1]
+		}
+	}
+
 	// Create new service instance.
 	svc := service.New(service.Config{
 		Name:    name,
@@ -56,6 +66,12 @@ func main() {
 	svc.UseGateway(gateway.NewHTTP(&gateway.HTTPOptions{
 		Port: os.Getenv("PORT"),
 	}))
+
+	svc.GatewayEndpoint("/", func(r *service.Request) error {
+		// Authorize only special users.
+		svc.Logger.Info().Msgf("Middleware: %s", r.Ctx.Request().Header.Peek("Authorization"))
+		return r.Ctx.Next()
+	})
 
 	// Define endpoint for protocol translation of API v1.
 	svc.GatewayEndpoint("/v1", func(r *service.Request) error {

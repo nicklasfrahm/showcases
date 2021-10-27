@@ -6,6 +6,7 @@ metadata:
 stringData:
   BROKER_URI: nats://nats.${NAMESPACE}.svc:4222
   PORT: "8080"
+  AUTHORIZED_CREDENTIALS: ${AUTHORIZED_CREDENTIALS}
 ---
 apiVersion: v1
 kind: Service

@@ -16,7 +16,6 @@ services:
       - "4222:4222"
     networks:
       - nats
-      - ingress
 
   audit:
     depends_on:
@@ -27,8 +26,9 @@ services:
       args:
         SERVICE: audit
         VERSION: ${VERSION:-dev}
+    restart: always
     environment:
-      BROKER_URI: nats://nats:4222
+      BROKER_URI: ${BROKER_URI:-nats://nats:4222}
     networks:
       - nats
 
@@ -41,8 +41,14 @@ services:
       args:
         SERVICE: mail
         VERSION: ${VERSION:-dev}
+    restart: always
     environment:
-      BROKER_URI: nats://nats:4222
+      BROKER_URI: ${BROKER_URI:-nats://nats:4222}
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY}
+      SENDGRID_HTTP_URI: ${SENDGRID_HTTP_URI}
+      SPARKPOST_API_KEY: ${SPARKPOST_API_KEY}
+      SPARKPOST_HTTP_URI: ${SPARKPOST_HTTP_URI}
+      MAIL_FROM: ${MAIL_FROM}
     networks:
       - nats
 
@@ -57,8 +63,9 @@ services:
         VERSION: ${VERSION:-dev}
     restart: always
     environment:
-      PORT: "8080"
-      BROKER_URI: nats://nats:4222
+      BROKER_URI: ${BROKER_URI:-nats://nats:4222}
+      PORT: ${PORT:-8080}
+      AUTHORIZED_CREDENTIALS: ${AUTHORIZED_CREDENTIALS}
     ports:
       - "80:8080"
     networks:

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ${SERVICE}-env
+  namespace: ${NAMESPACE}
+stringData:
+  BROKER_URI: nats://nats.${NAMESPACE}.svc:4222
+  SENDGRID_API_KEY: ${SENDGRID_API_KEY}
+  SENDGRID_HTTP_URI: ${SENDGRID_HTTP_URI}
+  SPARKPOST_API_KEY: ${SPARKPOST_API_KEY}
+  SPARKPOST_HTTP_URI: ${SPARKPOST_HTTP_URI}
+  MAIL_SENDER: ${MAIL_SENDER}

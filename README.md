@@ -4,6 +4,20 @@ A repository containing showcases for my programming and architecture skills.
 
 ## TLDR
 
+Create a `.env` file as shown below:
+
+```ini
+BROKER_URI=nats://nats:4222
+SENDGRID_API_KEY=xxxxxxxxxxxxxxxx
+SENDGRID_HTTP_URI=https://api.sendgrid.com/v3/mail/send
+SPARKPOST_API_KEY=xxxxxxxxxxxxxxxx
+SPARKPOST_HTTP_URI=https://api.eu.sparkpost.com/api/v1
+AUTHORIZED_CREDENTIALS=user1:pass1,user2:pass2
+MAIL_FROM=no-reply@mail.example.com
+```
+
+Afterwards run:
+
 ```shell
 docker-compose up
 ```
