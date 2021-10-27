@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/helmet/v2"
 
+	"github.com/nicklasfrahm/showcases/pkg/broker"
 	"github.com/nicklasfrahm/virtual-white-board/pkg/gateway"
 	"github.com/nicklasfrahm/virtual-white-board/pkg/middleware"
 	"github.com/nicklasfrahm/virtual-white-board/pkg/service"
@@ -33,7 +34,7 @@ func main() {
 		svc.Logger.Fatal().Msgf("Missing required environment variable: PORT")
 	}
 
-	svc.UseBroker(os.Getenv("NATS_URI"))
+	svc.UseBroker(&broker.NATSOptions{}).UseGateway(&gateway.FiberConfig{})
 
 	// Create router.
 	app := fiber.New(fiber.Config{

@@ -1,4 +1,3 @@
-# Note: Ideally, this should live in `deployments/`, but we keep it here for simplicity.
 version: "3"
 
 networks:
@@ -51,7 +50,7 @@ services:
     depends_on:
       - nats
     build:
-      context: .
+      context: ../../
       dockerfile: build/package/go.Dockerfile
       args:
         SERVICE: audit
@@ -65,7 +64,7 @@ services:
     depends_on:
       - nats
     build:
-      context: .
+      context: ../../
       dockerfile: build/package/go.Dockerfile
       args:
         SERVICE: gateway-http

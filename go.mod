@@ -1,4 +1,4 @@
-module github.com/nicklasfrahm/virtual-white-board
+module github.com/nicklasfrahm/showcases
 
 go 1.16
 

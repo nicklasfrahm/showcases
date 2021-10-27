@@ -130,6 +130,21 @@ The scope of this repository is to create a functional prototype. We therefore r
 - [ ] Define a branching strategy and automate release management using [semantic releases](https://github.com/semantic-release/semantic-release)
 - [ ] Configure high availability within Kubernetes and the services
 
+## Future improvements
+
+The microservice framework created here could have the following future features:
+
+- [ ] Support for message queues via `broker.QueueSubscribe()` and `broker.QueuePublish()` or similar
+- [ ] Logger abstraction via an interface to allow logging to services such as [Grafana Loki](https://grafana.com/oss/loki/)
+- [ ] Broker support for [Redis](https://redis.io/) and [GCP Pub/Sub](https://cloud.google.com/pubsub)
+- [ ] Automatic export of simple prometheus metrics
+- [ ] Custom method in handlers to manage prometheus metrics
+- [ ] Aligned handler interface with Knative
+- [ ] Developer tooling to easily package a microservice
+- [ ] Benchmark and improve performance and reduce memory usage, possibly via more extensive pointer usage
+- [ ] WebSocket, MQTT and CoAP gateway
+- [ ] Auto-configure gateway via Kubernetes API resources `Gateway` and `Ingress`
+
 ## License
 
 This project is licensed under the terms of the [MIT License](./LICENSE.md).

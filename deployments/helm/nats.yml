@@ -1,0 +1,26 @@
+# Below you may find important information about the helm chart
+# that this configuration targets.
+# Docs: https://github.com/nats-io/k8s/tree/main/helm/charts/nats
+# Repo: https://nats-io.github.io/k8s/helm/charts/
+nats:
+  image: nats:alpine
+
+  jetstream:
+    enabled: true
+
+    memStorage:
+      enabled: true
+      size: 1Gi
+
+    fileStorage:
+      enabled: true
+      size: 1Gi
+      storageDirectory: /data
+
+cluster:
+  enabled: true
+  noAdvertise: true
+
+# TODO: Configure monitoring via Prometheus.
+exporter:
+  enabled: false

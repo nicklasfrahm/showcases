@@ -7,7 +7,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sys/unix"
@@ -21,8 +20,9 @@ type Config struct {
 
 // Service contains the state and configuration of a microservice.
 type Service struct {
-	Logger *zerolog.Logger
-	Broker *nats.Conn
+	Logger  *zerolog.Logger
+	Broker  Broker
+	Gateway Gateway
 
 	config    Config
 	signals   chan os.Signal
@@ -37,7 +37,6 @@ func New(config Config) *Service {
 	})
 
 	return &Service{
-		// Configure logger.
 		Logger: &log.Logger,
 
 		config:    config,
@@ -46,42 +45,64 @@ func New(config Config) *Service {
 	}
 }
 
-func (svc *Service) UseBroker(uri string) {
-	if uri == "" {
-		svc.Logger.Fatal().Msgf("Broker URI missing")
-	}
+func (svc *Service) UseBroker(b Broker) *Service {
+	// Store reference to broker.
+	svc.Broker = b
 
-	options := []nats.Option{
-		nats.Name(svc.config.Name),
-		nats.Timeout(1 * time.Second),
-		nats.PingInterval(5 * time.Second),
-		nats.MaxPingsOutstanding(6),
-	}
+	// Pass service pointer to broker.
+	b.Bind(svc)
 
-	// TODO: Remove this once credentials are used.
-	svc.Logger.Info().Msgf("Connecting to broker: %s", uri)
-	conn, err := nats.Connect(uri, options...)
-	if err != nil {
-		svc.Logger.Fatal().Msg(err.Error())
-	}
-
-	svc.Broker = conn
+	// Return the service pointer to allow method chaining.
+	return svc
 }
 
-func (svc *Service) Listen() {
+func (svc *Service) UseGateway(g Gateway) *Service {
+	// Store reference to gateway.
+	svc.Gateway = g
+
+	// Pass service pointer to gateway.
+	g.Bind(svc)
+
+	// Return the service pointer to allow method chaining.
+	return svc
+}
+
+func (svc *Service) BrokerEndpoint(endpoint string, messageHandler MessageHandler) {
+	// Ensure that a broker is configured when endpoints are defined.
+	if svc.Broker == nil {
+		svc.Logger.Fatal().Msg("Failed to register broker endpoint: Missing broker configuration")
+	}
+
+	// Subscribe to broker endpoint.
+	if err := svc.Broker.Subscribe(endpoint, messageHandler); err != nil {
+		svc.Logger.Fatal().Msgf("Failed to register broker endpoint: %v", err)
+	}
+
+	// Log the registered endpoint.
+	svc.Logger.Info().Msg("Endpoint registered: " + endpoint)
+}
+
+func (svc *Service) Start() {
 	// Subscribe to OS signals and asynchronously await them in goroutine.
 	signal.Notify(svc.signals, syscall.SIGINT, syscall.SIGTERM)
-	go svc.awaitSignal()
+	go svc.awaitSignals()
 
 	// Log basic service information.
-	svc.Logger.Info().Msg("Service: " + svc.config.Name)
-	svc.Logger.Info().Msg("Version: " + svc.config.Version)
+	svc.Logger.Info().Msgf("Service: %s", svc.config.Name)
+	svc.Logger.Info().Msgf("Version: %s", svc.config.Version)
+
+	// Connect to broker if configured.
+	if svc.Broker != nil {
+		if err := svc.Broker.Connect(); err != nil {
+			svc.Logger.Fatal().Msgf("Failed to connect to broker: %v", err)
+		}
+	}
 
 	// Block until terminated.
 	<-svc.terminate
 }
 
-func (svc *Service) awaitSignal() {
+func (svc *Service) awaitSignals() {
 	// Receive signal.
 	sig := <-svc.signals
 	sigName := unix.SignalName(sig.(syscall.Signal))
@@ -90,7 +111,9 @@ func (svc *Service) awaitSignal() {
 	if sig == syscall.SIGINT {
 		fmt.Print("\r")
 	}
-	svc.Logger.Info().Msg("Terminating due to signal: " + sigName)
+
+	svc.Logger.Info().Msg("Signal received: " + sigName)
+	svc.Logger.Info().Msg("Terminating ...")
 
 	// Terminate process.
 	svc.terminate <- true

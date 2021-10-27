@@ -4,7 +4,6 @@ import (
 	"os"
 	"time"
 
-	_ "github.com/joho/godotenv/autoload"
 	"github.com/nats-io/nats.go"
 
 	"github.com/nicklasfrahm/showcases/pkg/broker"
@@ -35,9 +34,13 @@ func main() {
 		RequestTimeout: 20 * time.Millisecond,
 	}))
 
-	// Define catch-all endpoint for audit service.
-	svc.BrokerEndpoint(">", func(m *service.Message) {
-		m.Service.Logger.Info().Msgf("%s >> %s", *m.Endpoint, string(*m.Data))
+	svc.BrokerEndpoint("v1.mail.create", func(m *service.Message) {
+		// TODO: Implement actual mail sending logic.
+		res := []byte("test")
+
+		if err := m.Service.Broker.Publish(*m.Reply, res); err != nil {
+			m.Service.Logger.Error().Err(err).Msgf("Failed to reply: %s", *m.Endpoint)
+		}
 	})
 
 	// Wait until error occurs or signal is received.

@@ -98,3 +98,38 @@ func metaFromPath(c *fiber.Ctx) (*Meta, error) {
 	}
 	return &Meta{Subject: resourceSubject, Verb: requestOne[method]}, nil
 }
+
+
+
+
+	// Create router.
+	app := fiber.New(fiber.Config{
+		ErrorHandler:          middleware.Error(),
+		DisableStartupMessage: true,
+	})
+
+	// Load middlewares.
+	app.Use(recover.New())
+	app.Use(helmet.New())
+	app.Use(cors.New(cors.Config{
+		AllowHeaders:     "Accept,Authorization,Content-Type,X-CSRF-Token",
+		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS",
+		AllowCredentials: true,
+		MaxAge:           600,
+	}))
+	app.Use(compress.New(compress.Config{
+		Level: compress.LevelBestCompression,
+	}))
+	app.Use(middleware.RedirectSlashes())
+	app.Use(middleware.ContentType(fiber.MIMEApplicationJSONCharsetUTF8))
+
+	// Mount gateway handler.
+	app.Use(gateway.HTTP(svc))
+
+	// Configure fallback route.
+	app.Use(middleware.NotFound())
+
+	svc.Logger.Info().Msg("Service online: " + port + "/tcp")
+	if err := app.Listen(":" + port); err != nil {
+		svc.Logger.Fatal().Err(err).Msg("Service failed")
+	}
