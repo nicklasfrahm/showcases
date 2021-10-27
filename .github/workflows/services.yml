@@ -84,6 +84,11 @@ jobs:
   nats:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - audit
+          - gateway-http
     environment:
       name: production
     steps:
@@ -108,3 +113,52 @@ jobs:
           helm repo add nats https://nats-io.github.io/k8s/helm/charts/
           helm repo update
           helm upgrade nats nats/nats --atomic -i -n ${{ env.NAMESPACE }} -f deployments/helm/nats.yml
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - audit
+          - gateway-http
+    env:
+      NAMESPACE: ${{ env.NAMESPACE }}
+      SERVICE: ${{ matrix.service }}
+    environment:
+      name: production
+    needs:
+      - nats
+      - build
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v2
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v1
+
+      - name: Install helm
+        uses: azure/setup-helm@v1
+
+      - name: Set up kubeconfig
+        run: |
+          mkdir -m 700 -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Install secret containing environment variables
+        run: |
+          export ENV_VAR_NAME=$(echo ENV_SECRET_${SERVICE} | tr [:lower:] [:upper:] | tr '-' '_' | tr -d '\n')
+          echo ${!ENV_VAR_NAME} | envsubst | kubectl apply -f
+
+      - name: Install service deployment
+        run: |
+          envsubst < deployments/kubernetes/service-deployment.yml | kubectl apply -f -
+          kubectl --namespace=$NAMESPACE rollout status --timeout=60s deployment $SERVICE
+        env:
+
+      # - name: Install gateway ingress
+      #   run: |
+      #     if [[ "${{ matrix.service }}" == *"gateway"* ]]; then
+      #       envsubst < deployments/kubernetes/service-ingress.yml | kubectl apply -f -
+      #     fi
