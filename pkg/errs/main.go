@@ -5,6 +5,7 @@ import (
 )
 
 var (
+	InvalidJSON        = NewServiceError(400, "Invalid JSON")
 	MissingCredentials = NewServiceError(401, "Missing Credentials")
 	InvalidCredentials = NewServiceError(403, "Invalid Credentials")
 	InvalidEndpoint    = NewServiceError(404, "Invalid Endpoint")

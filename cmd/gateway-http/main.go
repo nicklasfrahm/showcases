@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/base64"
 	"fmt"
 	"net/http"
 	"os"
@@ -65,39 +64,39 @@ func main() {
 		Port: os.Getenv("PORT"),
 	}))
 
-	svc.GatewayEndpoint("/", func(r *service.Request) error {
-		// Decode information from request header.
-		authHeader := r.Ctx.Request().Header.Peek("Authorization")
-		authHeaderSegments := strings.Split(string(authHeader), " ")
+	// svc.GatewayEndpoint("/", func(r *service.Request) error {
+	// 	// Decode information from request header.
+	// 	authHeader := r.Ctx.Request().Header.Peek("Authorization")
+	// 	authHeaderSegments := strings.Split(string(authHeader), " ")
 
-		// Check if credentials are present with the right authentication scheme.
-		if len(authHeaderSegments) != 2 {
-			return errs.MissingCredentials
-		}
-		authScheme := authHeaderSegments[0]
-		if strings.ToLower(authScheme) != "basic" {
-			return errs.InvalidCredentials
-		}
+	// 	// Check if credentials are present with the right authentication scheme.
+	// 	if len(authHeaderSegments) != 2 {
+	// 		return errs.MissingCredentials
+	// 	}
+	// 	authScheme := authHeaderSegments[0]
+	// 	if strings.ToLower(authScheme) != "basic" {
+	// 		return errs.InvalidCredentials
+	// 	}
 
-		// Decode the credentials.
-		authCreds, err := base64.StdEncoding.DecodeString(authHeaderSegments[1])
-		if err != nil {
-			return errs.InvalidCredentials
-		}
+	// 	// Decode the credentials.
+	// 	authCreds, err := base64.StdEncoding.DecodeString(authHeaderSegments[1])
+	// 	if err != nil {
+	// 		return errs.InvalidCredentials
+	// 	}
 
-		credentials := strings.SplitN(string(authCreds), ":", 2)
-		if len(credentials) != 2 {
-			return errs.InvalidCredentials
-		}
+	// 	credentials := strings.SplitN(string(authCreds), ":", 2)
+	// 	if len(credentials) != 2 {
+	// 		return errs.InvalidCredentials
+	// 	}
 
-		user := credentials[0]
-		pass := credentials[1]
-		if users[user] != pass {
-			return errs.InvalidCredentials
-		}
+	// 	user := credentials[0]
+	// 	pass := credentials[1]
+	// 	if users[user] != pass {
+	// 		return errs.InvalidCredentials
+	// 	}
 
-		return r.Ctx.Next()
-	})
+	// 	return r.Ctx.Next()
+	// })
 
 	// Define endpoint for protocol translation of API v1.
 	svc.GatewayEndpoint("/v1", func(r *service.Request) error {
@@ -111,8 +110,7 @@ func main() {
 		if r.Ctx.Method() == http.MethodPost || r.Ctx.Method() == http.MethodPut {
 			// Parse body.
 			if err := r.Ctx.BodyParser(&body); err != nil {
-				svc.Logger.Warn().Msg(err.Error())
-				return err
+				return errs.InvalidJSON
 			}
 		}
 
@@ -121,14 +119,9 @@ func main() {
 			return errs.InvalidService
 		}
 
-		data, err := ctx.Cloudevent.DataBytes()
-		if err != nil {
-			return errs.UnexpectedError
-		}
-
 		// TODO: Set HTTP status based on service response.
 		r.Ctx.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSONCharsetUTF8)
-		return r.Ctx.Send(data)
+		return r.Ctx.Send(ctx.Cloudevent.Data())
 	})
 
 	// Wait until error occurs or signal is received.

@@ -3,9 +3,12 @@ package broker
 import (
 	"encoding/json"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
+	cloudevents "github.com/cloudevents/sdk-go/v2"
+	"github.com/google/uuid"
 	"github.com/nats-io/nats.go"
 
 	"github.com/nicklasfrahm/showcases/pkg/service"
@@ -57,8 +60,20 @@ func (broker *NATS) Subscribe(endpoint string, endpointHandler service.EndpointH
 	}
 
 	subscription, err := broker.natsConn.Subscribe(endpoint, func(msg *nats.Msg) {
+		event := cloudevents.NewEvent()
+		if err := json.Unmarshal(msg.Data, &event); err != nil {
+			broker.service.Logger.Error().Err(err).Msg("Failed to decode cloud event")
+			return
+		}
+
+		// Rewrite source to response topic.
+		event.SetSource(msg.Reply)
+
 		// Invoke the endpoint handler with the user-defined business logic.
-		endpointHandler(broker.newContext(msg))
+		endpointHandler(&service.Context{
+			Service:    broker.service,
+			Cloudevent: &event,
+		})
 	})
 	if err != nil {
 		return err
@@ -81,8 +96,8 @@ func (b *NATS) Unsubscribe(endpoint string) error {
 	return b.activeSubscriptions[endpoint].Unsubscribe()
 }
 
-func (broker *NATS) Publish(endpoint string, event interface{}) error {
-	encoded, err := json.Marshal(event)
+func (broker *NATS) Publish(endpoint string, data interface{}) error {
+	encoded, err := json.Marshal(broker.newEvent(endpoint, data))
 	if err != nil {
 		return err
 	}
@@ -90,8 +105,8 @@ func (broker *NATS) Publish(endpoint string, event interface{}) error {
 	return broker.natsConn.Publish(endpoint, encoded)
 }
 
-func (broker *NATS) Request(endpoint string, event interface{}) (*service.Context, error) {
-	encoded, err := json.Marshal(event)
+func (broker *NATS) Request(endpoint string, data interface{}) (*service.Context, error) {
+	encoded, err := json.Marshal(broker.newEvent(endpoint, data))
 	if err != nil {
 		return nil, err
 	}
@@ -101,59 +116,72 @@ func (broker *NATS) Request(endpoint string, event interface{}) (*service.Contex
 		return nil, err
 	}
 
-	return broker.newContext(msg), nil
+	res := new(cloudevents.Event)
+	if err := json.Unmarshal(msg.Data, res); err != nil {
+		return nil, err
+	}
+
+	return &service.Context{
+		Service:    broker.service,
+		Cloudevent: res,
+	}, nil
 }
 
-func (b *NATS) Connect() error {
+func (broker *NATS) Connect() error {
 	// Ensure that URI is provided.
-	if b.options.URI == "" {
-		b.service.Logger.Fatal().Msgf("Configuration missing: BROKER_URI")
+	if broker.options.URI == "" {
+		broker.service.Logger.Fatal().Msgf("Configuration missing: BROKER_URI")
 	}
 
 	// Parse URI to redact secrets.
-	redacted, err := url.Parse(b.options.URI)
+	redacted, err := url.Parse(broker.options.URI)
 	if err != nil {
-		b.service.Logger.Fatal().Msgf("Configuration invalid: BROKER_URI")
+		broker.service.Logger.Fatal().Msgf("Configuration invalid: BROKER_URI")
 	}
 	// Manually redact username and password rather than replacing it with xxx.
 	redacted.User = nil
 
 	// Connect to NATS broker.
-	b.service.Logger.Info().Msg("Connecting to: " + redacted.String())
-	nc, err := nats.Connect(b.options.URI, b.options.NATSOptions...)
+	broker.service.Logger.Info().Msg("Connecting to: " + redacted.String())
+	natsConn, err := nats.Connect(broker.options.URI, broker.options.NATSOptions...)
 	if err != nil {
 		return err
 	}
-	b.natsConn = nc
+	broker.natsConn = natsConn
 
 	// Create JetStream context.
-	js, err := nc.JetStream(nats.PublishAsyncMaxPending(256))
+	jetstreamCtx, err := natsConn.JetStream(nats.PublishAsyncMaxPending(256))
 	if err != nil {
 		return err
 	}
-	b.jetstreamCtx = js
+	broker.jetstreamCtx = jetstreamCtx
 
 	// Subscribe to queued subscriptions.
-	for endpoint := range b.queuedSubscriptions {
-		if err := b.Subscribe(endpoint, b.queuedSubscriptions[endpoint]); err != nil {
+	for endpoint := range broker.queuedSubscriptions {
+		if err := broker.Subscribe(endpoint, broker.queuedSubscriptions[endpoint]); err != nil {
 			return err
 		}
 
-		delete(b.queuedSubscriptions, endpoint)
+		delete(broker.queuedSubscriptions, endpoint)
 	}
 
 	return nil
 }
 
-func (broker *NATS) newContext(msg *nats.Msg) *service.Context {
-	// Create cloud event for NATS message.
-	event := broker.service.NewEvent()
-	event.SetSource(msg.Reply)
-	event.SetType(msg.Subject)
-	event.SetData(msg.Data)
+// newEvent is a convenience function that creates a new service-specific cloud event.
+func (broker *NATS) newEvent(endpoint string, data interface{}) *cloudevents.Event {
+	// Assemble new cloud event.
+	event := cloudevents.NewEvent()
+	event.SetID(uuid.NewString())
+	event.SetSource(broker.service.Config.Name)
+	event.SetData(cloudevents.ApplicationJSON, data)
 
-	return &service.Context{
-		Service:    broker.service,
-		Cloudevent: event,
+	// Check if the event is directed towards a specific inbox.
+	if strings.Split(endpoint, ".")[0] == "_INBOX" {
+		event.SetType("response")
+	} else {
+		event.SetType(endpoint)
 	}
+
+	return &event
 }

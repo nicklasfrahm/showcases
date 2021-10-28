@@ -40,6 +40,11 @@ func main() {
 	svc.BrokerEndpoint(">", func(ctx *service.Context) {
 		subject := ctx.Cloudevent.Type()
 
+		// Omit response messages as they should be distributed via a dedicated type.
+		if subject == "response" {
+			return
+		}
+
 		// Park data in interface to allow encoding as JSON.
 		var data interface{}
 		if err := ctx.Cloudevent.DataAs(&data); err != nil {

@@ -7,8 +7,7 @@ import (
 	"syscall"
 	"time"
 
-	cloudevents "github.com/cloudevents/sdk-go"
-	"github.com/google/uuid"
+	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sys/unix"
@@ -25,8 +24,8 @@ type Service struct {
 	Logger  *zerolog.Logger
 	Broker  Broker
 	Gateway Gateway
+	Config  Config
 
-	config    Config
 	signals   chan os.Signal
 	terminate chan bool
 }
@@ -50,8 +49,8 @@ func New(config Config) *Service {
 
 	return &Service{
 		Logger: &log.Logger,
+		Config: config,
 
-		config:    config,
 		signals:   make(chan os.Signal, 1),
 		terminate: make(chan bool, 1),
 	}
@@ -110,17 +109,6 @@ func (svc *Service) GatewayEndpoint(endpoint string, requestHandler RequestHandl
 	return svc
 }
 
-// NewEvent is a convenience function that creates a new
-// service-specific cloudevent.
-func (svc *Service) NewEvent() *cloudevents.Event {
-	event := cloudevents.NewEvent()
-	event.SetID(uuid.NewString())
-	event.SetSource(svc.config.Name)
-	event.SetDataContentType(cloudevents.ApplicationJSON)
-
-	return &event
-}
-
 // Start is a blocking function that starts the service.
 func (svc *Service) Start() {
 	// Subscribe to OS signals and asynchronously await them in goroutine.
@@ -128,8 +116,8 @@ func (svc *Service) Start() {
 	go svc.awaitSignals()
 
 	// Log basic service information.
-	svc.Logger.Info().Msgf("Service: %s", svc.config.Name)
-	svc.Logger.Info().Msgf("Version: %s", svc.config.Version)
+	svc.Logger.Info().Msgf("Service: %s", svc.Config.Name)
+	svc.Logger.Info().Msgf("Version: %s", svc.Config.Version)
 
 	// Connect to broker if configured.
 	if svc.Broker != nil {
