@@ -20,7 +20,9 @@ $(SVC_TARGETS): $(BIN_DIR)/%: $(SVC_SOURCES)
 
 # Using buildkit significantly enhances the build speed.
 up:
-	COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 docker-compose -f deployments/docker-compose.yml up --build
+	COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 \
+	docker-compose -f deployments/docker-compose.yml \
+	up --build --remove-orphans
 
 clean:
 	-@rm -rvf $(SVC_TARGETS)

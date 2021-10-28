@@ -44,11 +44,6 @@ func main() {
 		// if the event contains any data. Empty data is represented as empty array.
 		// Thus the length is zero. I ASSUME that objects will throw an error, but I
 		// haven't tested this yet. It's a hack, I know.
-		var dataBytes []byte
-		if err := ctx.Cloudevent.DataAs(&dataBytes); err != nil || len(dataBytes) == 0 {
-			ctx.Service.Logger.Info().Msgf("%s", subject)
-			return
-		}
 
 		// Park data in interface to allow encoding as JSON.
 		var data interface{}
@@ -57,7 +52,7 @@ func main() {
 			return
 		}
 
-		encoded, err := json.MarshalIndent(&data, "", " ")
+		encoded, err := json.MarshalIndent(data, "", " ")
 		if err != nil {
 			ctx.Service.Logger.Error().Err(err).Msgf("Failed to encode data from cloud event")
 		}

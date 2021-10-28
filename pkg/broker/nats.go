@@ -116,7 +116,7 @@ func (b *NATS) Connect() error {
 		b.service.Logger.Fatal().Msgf("Configuration invalid: BROKER_URI")
 	}
 	// Manually redact username and password rather than replacing it with xxx.
-	redacted.User = &url.Userinfo{}
+	redacted.User = nil
 
 	// Connect to NATS broker.
 	b.service.Logger.Info().Msg("Connecting to: " + redacted.String())

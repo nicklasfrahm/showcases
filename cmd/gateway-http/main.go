@@ -87,12 +87,10 @@ func main() {
 				svc.Logger.Warn().Msg(err.Error())
 				return err
 			}
+			event.SetData(body)
+		} else {
+			event.SetData(nil)
 		}
-
-		// else {
-		// 	// Populate event with empty array.
-		// 	event.SetData(make([]string, 0))
-		// }
 
 		ctx, err := svc.Broker.Request(subject, event)
 		if err != nil {

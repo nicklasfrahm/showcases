@@ -22,7 +22,7 @@ Afterwards run:
 docker-compose up
 ```
 
-Navigate to [localtest.me](http://localtest.me) and enjoy.
+Navigate to [http://localtest.me:8080](http://localtest.me:8080) and enjoy.
 
 **DISCLAIMER:** The application does not have a visual UI and is mostly a demonstration and proof of concept for the proposed microservice architecture. You can test the application by sending the following requests while watching the log output of the `audit` service:
 

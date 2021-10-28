@@ -1,3 +1,4 @@
+# TODO: Investigate how profiles can speed up the development process.
 version: "3"
 
 networks:
@@ -16,21 +17,22 @@ services:
       - "4222:4222"
     networks:
       - nats
+      - ingress
 
-  audit:
-    depends_on:
-      - nats
-    build:
-      context: ../
-      dockerfile: ./build/package/service.dockerfile
-      args:
-        SERVICE: audit
-        VERSION: ${VERSION:-dev}
-    restart: always
-    environment:
-      BROKER_URI: ${BROKER_URI:-nats://nats:4222}
-    networks:
-      - nats
+  # audit:
+  #   depends_on:
+  #     - nats
+  #   build:
+  #     context: ../
+  #     dockerfile: ./build/package/service.dockerfile
+  #     args:
+  #       SERVICE: audit
+  #       VERSION: ${VERSION:-dev}
+  #   restart: always
+  #   environment:
+  #     BROKER_URI: ${BROKER_URI:-nats://nats:4222}
+  #   networks:
+  #     - nats
 
   mail:
     depends_on:
@@ -52,22 +54,22 @@ services:
     networks:
       - nats
 
-  gateway-http:
-    depends_on:
-      - nats
-    build:
-      context: ../
-      dockerfile: ./build/package/service.dockerfile
-      args:
-        SERVICE: gateway-http
-        VERSION: ${VERSION:-dev}
-    restart: always
-    environment:
-      BROKER_URI: ${BROKER_URI:-nats://nats:4222}
-      PORT: ${PORT:-8080}
-      AUTHORIZED_CREDENTIALS: ${AUTHORIZED_CREDENTIALS}
-    ports:
-      - "80:8080"
-    networks:
-      - ingress
-      - nats
+  # gateway-http:
+  #   depends_on:
+  #     - nats
+  #   build:
+  #     context: ../
+  #     dockerfile: ./build/package/service.dockerfile
+  #     args:
+  #       SERVICE: gateway-http
+  #       VERSION: ${VERSION:-dev}
+  #   restart: always
+  #   environment:
+  #     BROKER_URI: ${BROKER_URI:-nats://nats:4222}
+  #     PORT: ${PORT:-8080}
+  #     AUTHORIZED_CREDENTIALS: ${AUTHORIZED_CREDENTIALS}
+  #   ports:
+  #     - "9000:8080"
+  #   networks:
+  #     - ingress
+  #     - nats

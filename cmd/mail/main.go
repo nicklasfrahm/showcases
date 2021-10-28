@@ -71,8 +71,9 @@ func main() {
 		}
 
 		// Create response cloudevent.
+		resType := "v1.services.mail.providers.found"
 		res := ctx.Service.NewEvent()
-		res.SetType("v1.services.mail.providers.found")
+		res.SetType(resType)
 		res.SetData(mailProviders)
 
 		// Send reply. Please note that the source is an opaque string
@@ -81,7 +82,7 @@ func main() {
 			ctx.Service.Logger.Error().Err(err).Msgf("Failed to send response")
 		}
 		// Broadcast event.
-		if err := ctx.Service.Broker.Publish("v1.mail-providers.found", mailProviders); err != nil {
+		if err := ctx.Service.Broker.Publish(resType, mailProviders); err != nil {
 			ctx.Service.Logger.Error().Err(err).Msgf("Failed to reply: %s")
 		}
 	})
