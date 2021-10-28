@@ -56,6 +56,7 @@ func (m *SparkpostHTTPMailer) Send(mail *Mail) error {
 			Subject: mail.Subject,
 			Text:    mail.Message,
 		},
+		Recipients: recipients,
 	})
 	if err != nil {
 		m.SetDisabled(true)
@@ -63,14 +64,14 @@ func (m *SparkpostHTTPMailer) Send(mail *Mail) error {
 	}
 
 	// Create a new HTTP request.
-	req, err := http.NewRequest(http.MethodPost, m.Config.URI, bytes.NewReader(reqJson))
+	req, err := http.NewRequest(http.MethodPost, m.Config.URI+"/transmissions", bytes.NewReader(reqJson))
 	if err != nil {
 		m.SetDisabled(true)
 		return err
 	}
 
 	// Add headers to HTTP request.
-	req.Header.Set("Authorization", "Bearer "+m.Config.APIKey)
+	req.Header.Set("Authorization", m.Config.APIKey)
 	req.Header.Set("Content-Type", "application/json")
 
 	res, err := m.httpClient.Do(req)
@@ -85,12 +86,7 @@ func (m *SparkpostHTTPMailer) Send(mail *Mail) error {
 		m.SetDisabled(true)
 		return err
 	}
-	resJson, err := json.MarshalIndent(data, "", "  ")
-	if err != nil {
-		m.SetDisabled(true)
-		return err
-	}
-	m.Config.Logger.Info().Msgf("Mail sent: \n%v", resJson)
+	m.Config.Logger.Info().Msgf("Mail sent: \n%s", string(data))
 
 	// Add information about the use mail provider.
 	mail.MailProvider = *m.mailProvider

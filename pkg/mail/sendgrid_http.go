@@ -74,7 +74,7 @@ func (m *SendgridHTTPMailer) Send(mail *Mail) error {
 	}
 
 	// Create a new HTTP request.
-	req, err := http.NewRequest(http.MethodPost, m.Config.URI, bytes.NewReader(reqJson))
+	req, err := http.NewRequest(http.MethodPost, m.Config.URI+"/mail/send", bytes.NewReader(reqJson))
 	if err != nil {
 		m.SetDisabled(true)
 		return err
@@ -101,7 +101,7 @@ func (m *SendgridHTTPMailer) Send(mail *Mail) error {
 		m.SetDisabled(true)
 		return err
 	}
-	m.Config.Logger.Info().Msgf("Mail sent: \n%v", resJson)
+	m.Config.Logger.Info().Msgf("Mail sent: \n%s", string(resJson))
 
 	// Add information about the use mail provider.
 	mail.MailProvider = *m.mailProvider

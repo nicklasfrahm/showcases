@@ -34,17 +34,17 @@ func main() {
 	mailers := make(map[string]mail.Mailer)
 
 	// Set up mailers.
+	mailers["sendgrid-http"] = mail.NewSendgridHTTP(&mail.Config{
+		URI:     sendgridHTTPURI,
+		APIKey:  sendgridAPIKey,
+		Logger:  svc.Logger,
+		Timeout: 1 * time.Second,
+	})
 	mailers["sparkpost-http"] = mail.NewSparkpostHTTP(&mail.Config{
 		URI:     sparkpostHTTPURI,
 		APIKey:  sparkpostAPIKey,
 		Logger:  svc.Logger,
 		From:    mailFrom,
-		Timeout: 1 * time.Second,
-	})
-	mailers["sendgrid-http"] = mail.NewSendgridHTTP(&mail.Config{
-		URI:     sendgridHTTPURI,
-		APIKey:  sendgridAPIKey,
-		Logger:  svc.Logger,
 		Timeout: 1 * time.Second,
 	})
 
@@ -73,73 +73,56 @@ func main() {
 		// Send reply. Please note that the source is an opaque string
 		// that is used by the broker implementation to perform routing.
 		if err := ctx.Service.Broker.Publish(ctx.Cloudevent.Source(), mailProviders); err != nil {
-			ctx.Service.Logger.Error().Err(err).Msgf("Failed to send response")
+			ctx.Service.Logger.Error().Err(err).Msgf("Failed to respond")
 		}
 		// Broadcast event.
 		if err := ctx.Service.Broker.Publish("v1.services.mail.providers.found", mailProviders); err != nil {
-			ctx.Service.Logger.Error().Err(err).Msgf("Failed to reply: %s")
+			ctx.Service.Logger.Error().Err(err).Msgf("Failed to broadcast")
 		}
 	})
 
-	// svc.BrokerEndpoint("v1.mail.create", func(c *service.Context) {
-	// 	// TODO: Parse cloudevent and marshal it into a struct.
-	// 	req := cloudevents.NewEvent()
-	// 	fmt.Println(string(*m.Data))
-	// 	err := json.Unmarshal(*m.Data, &req)
-	// 	if err != nil {
-	// 		m.Service.Logger.Warn().Err(err).Msgf("Failed to send mail")
-	// 		return
-	// 	}
+	svc.BrokerEndpoint("v1.mails.create", func(ctx *service.Context) {
+		// Parse cloudevent and marshal it into a struct.
+		mail := new(mail.Mail)
+		if err := ctx.Cloudevent.DataAs(mail); err != nil {
+			// TODO: Improve error handling by sending appropriate error code
+			// to gateway like as 400 or 422, because the validation failed.
+			// This will just silently fail and cause the service to return
+			// error code 503, which is not very descriptive.
+			return
+		}
 
-	// 	mail := &mail.Mail{}
+		sent := false
+		for _, mailer := range mailers {
+			// Check if provider is disabled.
+			if !mailer.MailProvider().Disabled {
+				// Attempt to send email.
+				err := mailer.Send(mail)
+				if err == nil {
+					// Sucessfully sent email. Don't retry.
+					sent = true
+					break
+				}
 
-	// 	res := cloudevents.NewEvent()
-	// 	res.SetID(uuid.NewString())
-	// 	res.SetSource("mail")
-	// 	for _, mailer := range mailers {
-	// 		// Check if provider is disabled.
-	// 		if !mailer.MailProvider().Disabled {
-	// 			// Attempt to send email.
-	// 			if err = mailer.Send(mail); err == nil {
-	// 				// Sucessfully sent email. Don't retry.
-	// 				res.SetType("v1.mail.created")
-	// 				res.SetData(mail)
+				// Display warning message upon failed delivery attempt.
+				ctx.Service.Logger.Warn().Err(err).Msgf("Failed to send mail")
+			}
+		}
 
-	// 				// Do not attempt to use other providers.
-	// 				break
-	// 			}
+		if !sent {
+			// TODO: See earlier to do comment. Bad Nicklas, go fix!
+			return
+		}
 
-	// 			// Display warning message upon failed delivery attempt.
-	// 			m.Service.Logger.Warn().Err(err).Msgf("Failed to send mail")
-	// 			// Reset error.
-	// 			err = nil
-	// 		}
-	// 	}
-
-	// 	// No attempt was sucessful.
-	// 	endpointUnsent := "v1.mail.unsent"
-	// 	if err != nil {
-	// 		res.SetType(endpointUnsent)
-	// 		res.SetDataContentType(cloudevents.ApplicationJSON)
-	// 		res.SetData(mail)
-	// 	}
-
-	// 	// Encode cloud event.
-	// 	encodedEvent, err := json.Marshal(res)
-	// 	if err != nil {
-	// 		m.Service.Logger.Warn().Err(err).Msgf("Failed to encode response")
-	// 		return
-	// 	}
-
-	// 	// Send reply.
-	// 	if err := m.Service.Broker.Publish(*m.Reply, encodedEvent); err != nil {
-	// 		m.Service.Logger.Error().Err(err).Msgf("Failed to send response")
-	// 	}
-	// 	// Broadcast unsent email.
-	// 	if err := m.Service.Broker.Publish(endpointUnsent, encodedEvent); err != nil {
-	// 		m.Service.Logger.Error().Err(err).Msgf("Failed to reply: %s")
-	// 	}
-	// })
+		// Send reply.
+		if err := ctx.Service.Broker.Publish(ctx.Cloudevent.Source(), mail); err != nil {
+			ctx.Service.Logger.Error().Err(err).Msgf("Failed to respond")
+		}
+		// Broadcast unsent email.
+		if err := ctx.Service.Broker.Publish("v1.mails.unsent", mail); err != nil {
+			ctx.Service.Logger.Error().Err(err).Msgf("Failed to broadcast")
+		}
+	})
 
 	// Wait until error occurs or signal is received.
 	svc.Start()
