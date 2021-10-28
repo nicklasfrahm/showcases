@@ -1,6 +1,7 @@
 package broker
 
 import (
+	"encoding/json"
 	"net/url"
 	"sync"
 	"time"
@@ -25,7 +26,7 @@ type NATS struct {
 	natsConn            *nats.Conn
 	jetstreamCtx        nats.JetStreamContext
 	activeSubscriptions map[string]*nats.Subscription
-	queuedSubscriptions map[string]service.MessageHandler
+	queuedSubscriptions map[string]service.EndpointHandler
 	mutex               *sync.Mutex
 }
 
@@ -39,37 +40,33 @@ func NewNATS(opts *NATSOptions) service.Broker {
 	return &NATS{
 		options:             opts,
 		activeSubscriptions: make(map[string]*nats.Subscription),
-		queuedSubscriptions: make(map[string]service.MessageHandler),
+		queuedSubscriptions: make(map[string]service.EndpointHandler),
 		mutex:               &sync.Mutex{},
 	}
 }
 
-func (b *NATS) Bind(svc *service.Service) {
-	b.service = svc
+func (broker *NATS) Bind(svc *service.Service) {
+	broker.service = svc
 }
 
-func (b *NATS) Subscribe(endpoint string, messageHandler service.MessageHandler) error {
+func (broker *NATS) Subscribe(endpoint string, endpointHandler service.EndpointHandler) error {
 	// Queue subscriptions that are made before connecting to the server.
-	if b.natsConn == nil {
-		b.queuedSubscriptions[endpoint] = messageHandler
+	if broker.natsConn == nil {
+		broker.queuedSubscriptions[endpoint] = endpointHandler
 		return nil
 	}
 
-	subscription, err := b.natsConn.Subscribe(endpoint, func(msg *nats.Msg) {
-		messageHandler(&service.Message{
-			Endpoint: &msg.Subject,
-			Reply:    &msg.Reply,
-			Data:     &msg.Data,
-			Service:  b.service,
-		})
+	subscription, err := broker.natsConn.Subscribe(endpoint, func(msg *nats.Msg) {
+		// Invoke the endpoint handler with the user-defined business logic.
+		endpointHandler(broker.newContext(msg))
 	})
 	if err != nil {
 		return err
 	}
 
-	b.mutex.Lock()
-	b.activeSubscriptions[endpoint] = subscription
-	b.mutex.Unlock()
+	broker.mutex.Lock()
+	broker.activeSubscriptions[endpoint] = subscription
+	broker.mutex.Unlock()
 
 	return nil
 }
@@ -84,23 +81,27 @@ func (b *NATS) Unsubscribe(endpoint string) error {
 	return b.activeSubscriptions[endpoint].Unsubscribe()
 }
 
-func (b *NATS) Publish(endpoint string, data []byte) error {
-	err := b.natsConn.Publish(endpoint, data)
-	return err
+func (broker *NATS) Publish(endpoint string, event interface{}) error {
+	encoded, err := json.Marshal(event)
+	if err != nil {
+		return err
+	}
+
+	return broker.natsConn.Publish(endpoint, encoded)
 }
 
-func (b *NATS) Request(endpoint string, data []byte) (*service.Message, error) {
-	msg, err := b.natsConn.Request(endpoint, data, b.options.RequestTimeout)
+func (broker *NATS) Request(endpoint string, event interface{}) (*service.Context, error) {
+	encoded, err := json.Marshal(event)
 	if err != nil {
 		return nil, err
 	}
 
-	return &service.Message{
-		Endpoint: &msg.Subject,
-		Reply:    &msg.Reply,
-		Data:     &msg.Data,
-		Service:  b.service,
-	}, nil
+	msg, err := broker.natsConn.Request(endpoint, encoded, broker.options.RequestTimeout)
+	if err != nil {
+		return nil, err
+	}
+
+	return broker.newContext(msg), nil
 }
 
 func (b *NATS) Connect() error {
@@ -142,4 +143,17 @@ func (b *NATS) Connect() error {
 	}
 
 	return nil
+}
+
+func (broker *NATS) newContext(msg *nats.Msg) *service.Context {
+	// Create cloud event for NATS message.
+	event := broker.service.NewEvent()
+	event.SetSource(msg.Reply)
+	event.SetType(msg.Subject)
+	event.SetData(msg.Data)
+
+	return &service.Context{
+		Service:    broker.service,
+		Cloudevent: event,
+	}
 }

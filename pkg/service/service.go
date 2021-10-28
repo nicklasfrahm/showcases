@@ -7,6 +7,8 @@ import (
 	"syscall"
 	"time"
 
+	cloudevents "github.com/cloudevents/sdk-go"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sys/unix"
@@ -28,6 +30,16 @@ type Service struct {
 	signals   chan os.Signal
 	terminate chan bool
 }
+
+// Context is the structure of the data that is passed to an endpoint.
+type Context struct {
+	Service    *Service
+	Cloudevent *cloudevents.Event
+}
+
+// EndpointHandler describes the function signature of the functiona
+// that implements the logic for the service endpoint.
+type EndpointHandler func(*Context)
 
 // New returns a new service for the given configuration.
 func New(config Config) *Service {
@@ -67,14 +79,14 @@ func (svc *Service) UseGateway(g Gateway) *Service {
 	return svc
 }
 
-func (svc *Service) BrokerEndpoint(endpoint string, messageHandler MessageHandler) *Service {
+func (svc *Service) BrokerEndpoint(endpoint string, endpointHandler EndpointHandler) *Service {
 	// Ensure that a broker is configured when endpoints are defined.
 	if svc.Broker == nil {
 		svc.Logger.Fatal().Err(ErrNoBrokerConfigured).Msg("Failed to register broker endpoint")
 	}
 
 	// Subscribe to broker endpoint.
-	if err := svc.Broker.Subscribe(endpoint, messageHandler); err != nil {
+	if err := svc.Broker.Subscribe(endpoint, endpointHandler); err != nil {
 		svc.Logger.Fatal().Err(err).Msgf("Failed to register broker endpoint")
 	}
 
@@ -98,6 +110,18 @@ func (svc *Service) GatewayEndpoint(endpoint string, requestHandler RequestHandl
 	return svc
 }
 
+// NewEvent is a convenience function that creates a new
+// service-specific cloudevent.
+func (svc *Service) NewEvent() *cloudevents.Event {
+	event := cloudevents.NewEvent()
+	event.SetID(uuid.NewString())
+	event.SetSource(svc.config.Name)
+	event.SetDataContentType(cloudevents.ApplicationJSON)
+
+	return &event
+}
+
+// Start is a blocking function that starts the service.
 func (svc *Service) Start() {
 	// Subscribe to OS signals and asynchronously await them in goroutine.
 	signal.Notify(svc.signals, syscall.SIGINT, syscall.SIGTERM)
@@ -139,3 +163,7 @@ func (svc *Service) awaitSignals() {
 	// Terminate process.
 	svc.terminate <- true
 }
+
+// TODO: Create convenience function that handler errors
+// by logging them. This allows to reduce the overhead
+// on the business logic side.

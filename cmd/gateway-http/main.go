@@ -1,16 +1,13 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
-	cloudevents "github.com/cloudevents/sdk-go"
 	"github.com/gofiber/fiber/v2"
-	"github.com/google/uuid"
 	"github.com/nats-io/nats.go"
 
 	"github.com/nicklasfrahm/showcases/pkg/broker"
@@ -75,43 +72,41 @@ func main() {
 
 	// Define endpoint for protocol translation of API v1.
 	svc.GatewayEndpoint("/v1", func(r *service.Request) error {
-		// TODO: Perform topic normalization in broker implementation.
 		// Convert HTTP path to NATS subject.
 		subject, err := pathToSubject(r.Ctx.Method(), r.Ctx.Path())
 		if err != nil {
 			return err
 		}
 
-		// Parse body.
-		var body interface{}
+		event := r.Service.NewEvent()
+		event.SetType(subject)
 		if r.Ctx.Method() == http.MethodPost || r.Ctx.Method() == http.MethodPut {
+			// Parse body.
+			var body interface{}
 			if err := r.Ctx.BodyParser(&body); err != nil {
 				svc.Logger.Warn().Msg(err.Error())
 				return err
 			}
 		}
 
-		event := cloudevents.NewEvent()
-		event.SetID(uuid.NewString())
-		event.SetSource("gateway-http")
-		event.SetType(subject)
-		event.SetDataContentType(cloudevents.ApplicationJSON)
-		event.SetData(body)
+		// else {
+		// 	// Populate event with empty array.
+		// 	event.SetData(make([]string, 0))
+		// }
 
-		// Encode cloud event.
-		encodedEvent, err := json.Marshal(event)
-		if err != nil {
-			return err
-		}
-
-		msg, err := svc.Broker.Request(subject, encodedEvent)
+		ctx, err := svc.Broker.Request(subject, event)
 		if err != nil {
 			return errs.InvalidService
 		}
 
+		data, err := ctx.Cloudevent.DataBytes()
+		if err != nil {
+			return errs.UnexpectedError
+		}
+
 		// TODO: Set HTTP status based on service response.
 		r.Ctx.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSONCharsetUTF8)
-		return r.Ctx.Send(*msg.Data)
+		return r.Ctx.Send(data)
 	})
 
 	// Wait until error occurs or signal is received.
@@ -139,3 +134,6 @@ func pathToSubject(method string, path string) (string, error) {
 	}
 	return mapMethod[method], nil
 }
+
+// TODO: Conceptualize and perform topic normalization
+// between broker implementations.

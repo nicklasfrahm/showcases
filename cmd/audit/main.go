@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"time"
 
@@ -36,8 +37,32 @@ func main() {
 	}))
 
 	// Define catch-all endpoint for audit service.
-	svc.BrokerEndpoint(">", func(m *service.Message) {
-		m.Service.Logger.Info().Msgf("%s >> %s", *m.Endpoint, string(*m.Data))
+	svc.BrokerEndpoint(">", func(ctx *service.Context) {
+		subject := ctx.Cloudevent.Type()
+
+		// TODO: Improve this. Currently this is a brute-force approach to figure out
+		// if the event contains any data. Empty data is represented as empty array.
+		// Thus the length is zero. I ASSUME that objects will throw an error, but I
+		// haven't tested this yet. It's a hack, I know.
+		var dataBytes []byte
+		if err := ctx.Cloudevent.DataAs(&dataBytes); err != nil || len(dataBytes) == 0 {
+			ctx.Service.Logger.Info().Msgf("%s", subject)
+			return
+		}
+
+		// Park data in interface to allow encoding as JSON.
+		var data interface{}
+		if err := ctx.Cloudevent.DataAs(&data); err != nil {
+			ctx.Service.Logger.Error().Err(err).Msgf("Failed to load data from cloud event")
+			return
+		}
+
+		encoded, err := json.MarshalIndent(&data, "", " ")
+		if err != nil {
+			ctx.Service.Logger.Error().Err(err).Msgf("Failed to encode data from cloud event")
+		}
+
+		ctx.Service.Logger.Info().Msgf("%s\n%s", subject, string(encoded))
 	})
 
 	// Wait until error occurs or signal is received.
