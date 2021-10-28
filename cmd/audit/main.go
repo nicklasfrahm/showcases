@@ -40,15 +40,16 @@ func main() {
 	svc.BrokerEndpoint(">", func(ctx *service.Context) {
 		subject := ctx.Cloudevent.Type()
 
-		// TODO: Improve this. Currently this is a brute-force approach to figure out
-		// if the event contains any data. Empty data is represented as empty array.
-		// Thus the length is zero. I ASSUME that objects will throw an error, but I
-		// haven't tested this yet. It's a hack, I know.
-
 		// Park data in interface to allow encoding as JSON.
 		var data interface{}
 		if err := ctx.Cloudevent.DataAs(&data); err != nil {
 			ctx.Service.Logger.Error().Err(err).Msgf("Failed to load data from cloud event")
+			return
+		}
+
+		if data == nil {
+			// There is no data. Just log the subject.
+			ctx.Service.Logger.Info().Msgf("%s", subject)
 			return
 		}
 

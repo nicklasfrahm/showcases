@@ -78,21 +78,16 @@ func main() {
 			return err
 		}
 
-		event := r.Service.NewEvent()
-		event.SetType(subject)
+		var body interface{}
 		if r.Ctx.Method() == http.MethodPost || r.Ctx.Method() == http.MethodPut {
 			// Parse body.
-			var body interface{}
 			if err := r.Ctx.BodyParser(&body); err != nil {
 				svc.Logger.Warn().Msg(err.Error())
 				return err
 			}
-			event.SetData(body)
-		} else {
-			event.SetData(nil)
 		}
 
-		ctx, err := svc.Broker.Request(subject, event)
+		ctx, err := svc.Broker.Request(subject, body)
 		if err != nil {
 			return errs.InvalidService
 		}
