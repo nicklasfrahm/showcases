@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"os"
@@ -65,8 +66,36 @@ func main() {
 	}))
 
 	svc.GatewayEndpoint("/", func(r *service.Request) error {
-		// Authorize only special users.
-		svc.Logger.Info().Msgf("Middleware: %s", r.Ctx.Request().Header.Peek("Authorization"))
+		// Decode information from request header.
+		authHeader := r.Ctx.Request().Header.Peek("Authorization")
+		authHeaderSegments := strings.Split(string(authHeader), " ")
+
+		// Check if credentials are present with the right authentication scheme.
+		if len(authHeaderSegments) != 2 {
+			return errs.MissingCredentials
+		}
+		authScheme := authHeaderSegments[0]
+		if strings.ToLower(authScheme) != "basic" {
+			return errs.InvalidCredentials
+		}
+
+		// Decode the credentials.
+		authCreds, err := base64.StdEncoding.DecodeString(authHeaderSegments[1])
+		if err != nil {
+			return errs.InvalidCredentials
+		}
+
+		credentials := strings.SplitN(string(authCreds), ":", 2)
+		if len(credentials) != 2 {
+			return errs.InvalidCredentials
+		}
+
+		user := credentials[0]
+		pass := credentials[1]
+		if users[user] != pass {
+			return errs.InvalidCredentials
+		}
+
 		return r.Ctx.Next()
 	})
 
