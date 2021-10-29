@@ -24,7 +24,11 @@ const EmailSender = () => {
       container
       spacing={2}
       justifyContent="center"
-      sx={{ padding: theme.spacing(2) }}
+      alignItems="center"
+      sx={{
+        height: "100vh",
+        padding: theme.spacing(2),
+      }}
     >
       <Grid item lg={3}>
         <Card variant="outlined">
@@ -40,9 +44,8 @@ const EmailSender = () => {
           <CardContent>
             <Grid container spacing={2}>
               {inputs.map((input) => (
-                <Grid item xs={12}>
+                <Grid item xs={12} key={input.label}>
                   <TextField
-                    key={input.label}
                     name={input.label}
                     label={input.label}
                     placeholder={input.label}
