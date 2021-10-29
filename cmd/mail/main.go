@@ -38,6 +38,7 @@ func main() {
 		URI:     sendgridHTTPURI,
 		APIKey:  sendgridAPIKey,
 		Logger:  svc.Logger,
+		From:    mailFrom,
 		Timeout: 1 * time.Second,
 	})
 	mailers["sparkpost-http"] = mail.NewSparkpostHTTP(&mail.Config{
@@ -92,7 +93,6 @@ func main() {
 			return
 		}
 
-		sent := false
 		for _, mailer := range mailers {
 			// Check if provider is disabled.
 			if !mailer.MailProvider().Disabled {
@@ -100,7 +100,6 @@ func main() {
 				err := mailer.Send(mail)
 				if err == nil {
 					// Sucessfully sent email. Don't retry.
-					sent = true
 					break
 				}
 
@@ -109,15 +108,14 @@ func main() {
 			}
 		}
 
-		if !sent {
-			// TODO: See earlier to do comment. Bad Nicklas, go fix!
+		// Check status.
+		if mail.MailProvider != nil {
+			if err := ctx.Service.Broker.Publish(ctx.Cloudevent.Source(), mail); err != nil {
+				ctx.Service.Logger.Error().Err(err).Msgf("Failed to respond")
+			}
 			return
 		}
 
-		// Send reply.
-		if err := ctx.Service.Broker.Publish(ctx.Cloudevent.Source(), mail); err != nil {
-			ctx.Service.Logger.Error().Err(err).Msgf("Failed to respond")
-		}
 		// Broadcast unsent email.
 		if err := ctx.Service.Broker.Publish("v1.mails.unsent", mail); err != nil {
 			ctx.Service.Logger.Error().Err(err).Msgf("Failed to broadcast")

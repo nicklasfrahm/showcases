@@ -3,6 +3,7 @@ package mail
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"sync"
@@ -86,10 +87,15 @@ func (m *SparkpostHTTPMailer) Send(mail *Mail) error {
 		m.SetDisabled(true)
 		return err
 	}
-	m.Config.Logger.Info().Msgf("Mail sent: \n%s", string(data))
+
+	if res.StatusCode != 200 {
+		m.SetDisabled(true)
+		return errors.New(string(data))
+	}
 
 	// Add information about the use mail provider.
-	mail.MailProvider = *m.mailProvider
+	mail.MailProvider = new(MailProvider)
+	*mail.MailProvider = *m.mailProvider
 
 	return nil
 }

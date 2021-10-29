@@ -3,6 +3,7 @@ package mail
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"sync"
@@ -22,15 +23,16 @@ type SendgridMIMETypedContent struct {
 }
 
 type SendgridPersonalization struct {
-	To []SendgridRecipient `json:"to"`
+	To []SendgridAccount `json:"to"`
 }
 
-type SendgridRecipient struct {
+type SendgridAccount struct {
 	Email string `json:"email"`
 }
 
 type SendgridMail struct {
 	Personalizations []SendgridPersonalization  `json:"personalizations"`
+	From             []SendgridAccount          `json:"from"`
 	Subject          string                     `json:"subject"`
 	Content          []SendgridMIMETypedContent `json:"content"`
 }
@@ -48,9 +50,9 @@ func (m *SendgridHTTPMailer) SetDisabled(disabled bool) {
 
 func (m *SendgridHTTPMailer) Send(mail *Mail) error {
 	// Encode API message body.
-	recipients := make([]SendgridRecipient, len(mail.Recipients))
+	recipients := make([]SendgridAccount, len(mail.Recipients))
 	for i, recipient := range mail.Recipients {
-		recipients[i] = SendgridRecipient{
+		recipients[i] = SendgridAccount{
 			Email: recipient,
 		}
 	}
@@ -58,6 +60,11 @@ func (m *SendgridHTTPMailer) Send(mail *Mail) error {
 		Personalizations: []SendgridPersonalization{
 			{
 				To: recipients,
+			},
+		},
+		From: []SendgridAccount{
+			{
+				Email: m.Config.From,
 			},
 		},
 		Subject: mail.Subject,
@@ -96,15 +103,15 @@ func (m *SendgridHTTPMailer) Send(mail *Mail) error {
 		m.SetDisabled(true)
 		return err
 	}
-	resJson, err := json.MarshalIndent(data, "", "  ")
-	if err != nil {
+
+	if res.StatusCode != 200 {
 		m.SetDisabled(true)
-		return err
+		return errors.New(string(data))
 	}
-	m.Config.Logger.Info().Msgf("Mail sent: \n%s", string(resJson))
 
 	// Add information about the use mail provider.
-	mail.MailProvider = *m.mailProvider
+	mail.MailProvider = new(MailProvider)
+	*mail.MailProvider = *m.mailProvider
 
 	return nil
 }

@@ -57,7 +57,7 @@ func main() {
 			nats.PingInterval(5 * time.Second),
 			nats.MaxPingsOutstanding(6),
 		},
-		RequestTimeout: 20 * time.Millisecond,
+		RequestTimeout: 1 * time.Second,
 	}))
 
 	// Configure gateway.

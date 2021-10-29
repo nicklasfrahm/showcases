@@ -19,20 +19,70 @@ MAIL_FROM=no-reply@mail.example.com
 Afterwards run:
 
 ```shell
-docker-compose up
+make up
 ```
 
 Navigate to [http://localtest.me:8080](http://localtest.me:8080) and enjoy.
 
-**DISCLAIMER:** The application does not have a visual UI and is mostly a demonstration and proof of concept for the proposed microservice architecture. You can test the application by sending the following requests while watching the log output of the `audit` service:
+## Approach
 
-- `GET localtest.me/posts`
-- `POST localtest.me/posts`
-- `PUT localtest.me/posts/1`
-- `POST localtest.me/posts/1`
-- `DELETE localtest.me/posts/1`
+I decided to create an interface in Go that exposes a `.Send()` function. This function is used by looping over all available providers. This implements automatic failover. In the future this could be improved by also assigning priorities. Another nice addition would be to show the external service status, which would greatly improve observability.
 
-Observe the subject / topic shown left of the `>>` and the `type` attribute of the cloud event. The gateway transforms the RESTful message to [CloudEvents](https://cloudevents.io/) for downstream processing. The convention followed is a classical RESTful CRUD interface.
+**NOTE:** There is an intentional bug (it's not a bug, it's a feature) that will cause SendGrid to fail. The application will instead use SparkPost to send the email.
+
+Make sure to authenticate via the `Basic` authentication scheme as configured in the `AUTHORIZED_CREDENTIALS` file of your `.env` file. Afterwards, test the application by performing the requests in the following order:
+
+- **GET `/v1/services/mail/providers`**
+- **POST `/v1/mails`**
+- **GET `/v1/services/mail/providers`**
+
+## Endpoints
+
+### Send email - `POST /v1/mails`
+
+#### Request
+
+```json
+{
+  "recipients": ["nicklas.frahm@gmail.com"],
+  "subject": "Yo! Check this out!",
+  "message": "This is sent via a microservice architecture."
+}
+```
+
+#### Response
+
+```json
+{
+  "recipients": ["nicklas.frahm@gmail.com"],
+  "subject": "Yo! Check this out!",
+  "message": "This is sent via a microservice architecture.",
+  "mail_provider": {
+    "name": "sparkpost-http",
+    "transport": "HTTP",
+    "disabled": false
+  }
+}
+```
+
+### List mail providers and their status - `GET /v1/services/mail/providers`
+
+#### Response
+
+```json
+[
+  {
+    "name": "sendgrid-http",
+    "transport": "HTTP",
+    "disabled": false
+  },
+  {
+    "name": "sparkpost-http",
+    "transport": "HTTP",
+    "disabled": false
+  }
+]
+```
 
 ## Architecture
 
@@ -44,7 +94,7 @@ Below you may find the proposed tech stacks for the different services.
 
 | Service        | Technologies                                        |
 | -------------- | --------------------------------------------------- |
-| Web Interface  | Svelte, MaterialUI, Static Hosting                  |
+| Web Interface  | React, Material UI, Static Hosting                  |
 | Broker / Queue | NATS                                                |
 | HTTP API       | Go, Fiber, NATS                                     |
 | WS API         | Go, Fiber, NATS                                     |

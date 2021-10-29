@@ -22,7 +22,7 @@ type Mail struct {
 	Subject    string   `json:"subject"`
 	Message    string   `json:"message"`
 
-	MailProvider MailProvider `json:"mail_provider"`
+	MailProvider *MailProvider `json:"mail_provider"`
 }
 
 type Mailer interface {
