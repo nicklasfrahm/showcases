@@ -1,23 +1,26 @@
 import React from "react";
+import Autocomplete from "@mui/material/Autocomplete";
 import Avatar from "@mui/material/Avatar";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardActions from "@mui/material/CardActions";
 import CardContent from "@mui/material/CardContent";
 import CardHeader from "@mui/material/CardHeader";
+import Chip from "@mui/material/Chip";
 import Grid from "@mui/material/Grid";
 import TextField from "@mui/material/TextField";
 import { useTheme } from "@mui/material/styles";
-import { Mail } from "@mui/icons-material";
+import { Mail, Send, Delete } from "@mui/icons-material";
 
-const inputs = [
-  { label: "From" },
-  { label: "Subject" },
-  { label: "Content", multiline: true },
-];
+const inputs = [{ label: "Subject" }, { label: "Content", multiline: true }];
 
 const EmailSender = () => {
   const theme = useTheme();
+  const [recipients, setRecipients] = React.useState([]);
+
+  const onRecipients = (event, value) => {
+    setRecipients(value);
+  };
 
   return (
     <Grid
@@ -35,7 +38,7 @@ const EmailSender = () => {
           <CardHeader
             avatar={
               <Avatar>
-                <Mail />
+                <Mail variant="rounded" />
               </Avatar>
             }
             title="Email"
@@ -43,12 +46,37 @@ const EmailSender = () => {
           />
           <CardContent>
             <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <Autocomplete
+                  multiple
+                  freeSolo
+                  id="recipients"
+                  options={[]}
+                  defaultValue={[]}
+                  onChange={onRecipients}
+                  renderTags={(value, getTagProps) =>
+                    value.map((option, index) => (
+                      <Chip
+                        variant="outlined"
+                        label={option}
+                        {...getTagProps({ index })}
+                      />
+                    ))
+                  }
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      variant="outlined"
+                      label="Recipients"
+                    />
+                  )}
+                />
+              </Grid>
               {inputs.map((input) => (
                 <Grid item xs={12} key={input.label}>
                   <TextField
-                    name={input.label}
+                    name={input.label.toLowerCase()}
                     label={input.label}
-                    placeholder={input.label}
                     fullWidth
                     minRows={!!input.multiline ? 4 : 0}
                     multiline={!!input.multiline}
@@ -58,7 +86,12 @@ const EmailSender = () => {
             </Grid>
           </CardContent>
           <CardActions>
-            <Button variant="outlined">Send</Button>
+            <Button startIcon={<Send variant="rounded" />} variant="contained">
+              Send
+            </Button>
+            <Button startIcon={<Delete variant="rounded" />} variant="outlined">
+              Discard
+            </Button>
           </CardActions>
         </Card>
       </Grid>
