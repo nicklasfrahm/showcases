@@ -2,20 +2,18 @@
 
 This document explains the underlying concepts and ideas of this microservice architecture.
 
-## Endpoints
+## Channels
 
-A key concept of the architecture is the concept of endpoints. Endpoints are a canonical representation of a hierarchical structure and are further used instead of:
+A key concept of the architecture is the concept of channels. Channels are a canonical representation of a hierarchical structure. Channels are identified by one or more lowercase, hyphen-delimited, plural nouns (`/[a-z-]+/`). A single dot (`.`) is used to define a new hierarchy level. The format is inspired by the [type attribute of a CloudEvent][cloud-event-type]. The table below illustrates the correlation between channels and other concepts of representing hierarchy levels in other protocols.
 
-- resource locations
-- function handles
-- event types
-- event topics
-- queues names
+| Concept       | Resource action | Wildcard resource | Wildcard action |
+| ------------- | --------------- | ----------------- | --------------- |
+| HTTP endpoint | `POST /pets`    | `POST /*`         | `ALL /pets`     |
+| MQTT topic    | `pets/create`   | `#/create`        | `pets/#`        |
+| Channels      | `pets.create`   | `>.create`        | `pets.>`        |
 
-All endpoints start with a forward slash (`/`), which is followed by one or more lowercase, hyphen-delimited, plural nouns (`/[a-z-]+/`) terminated by a forward slash after each. Instead of a noun, the endpoint may also contain a single-level (`*`) or a multi-level (`**`) wildcard. Finally the endpoint ends either with a verb (e.g. `find`) or a verbal adjective (e.g. `found`). A few examples are shown below.
+### Special channels
 
-- `/endpoints/create`
-- `/endpoints/found`
-- `/providers/external/*`
-- `/items/*/pending`
-- `/**`
+_TODO: Document the concept of **persistent channels** also referred to as **streams**._
+
+[cloud-event-type]: https://github.com/cloudevents/spec/blob/v1.0.1/spec.md#type
