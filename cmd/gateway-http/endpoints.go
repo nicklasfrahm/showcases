@@ -112,6 +112,9 @@ func Gateway() service.RequestHandler {
 			return errs.InvalidService
 		}
 
+		// TODO: Check the type of the event.
+		_ = res.Cloudevent.Type()
+
 		// TODO: Set HTTP status based on service response.
 		ctx.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSONCharsetUTF8)
 		return ctx.Send(res.Cloudevent.Data())
