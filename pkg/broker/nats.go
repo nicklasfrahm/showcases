@@ -142,7 +142,7 @@ func (broker *NATS) Connect() error {
 	redacted.User = nil
 
 	// Connect to NATS broker.
-	broker.service.Logger.Info().Msg("Connecting to: " + redacted.String())
+	broker.service.Logger.Info().Msg("Broker URI: " + redacted.String())
 	natsConn, err := nats.Connect(broker.options.URI, broker.options.NATSOptions...)
 	if err != nil {
 		return err

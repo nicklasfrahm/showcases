@@ -96,14 +96,14 @@ func (svc *Service) BrokerEndpoint(endpoint string, endpointHandler EndpointHand
 	return svc
 }
 
-func (svc *Service) GatewayEndpoint(endpoint string, requestHandler RequestHandler) *Service {
+func (svc *Service) GatewayEndpoint(requestHandler RequestHandler) *Service {
 	// Ensure that a gateway is configured when endpoints are defined.
 	if svc.Gateway == nil {
 		svc.Logger.Fatal().Err(ErrNoGatewayConfigured).Msg("Failed to register gateway endpoint")
 	}
 
 	// Pass request handler to gateway.
-	svc.Gateway.Route(endpoint, requestHandler)
+	svc.Gateway.Route(requestHandler)
 
 	// Return the service pointer to allow method chaining.
 	return svc

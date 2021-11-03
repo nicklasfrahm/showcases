@@ -20,6 +20,8 @@ services:
       - ingress
 
   audit:
+    profiles:
+      - audit
     depends_on:
       - nats
     build:
@@ -35,6 +37,8 @@ services:
       - nats
 
   mail:
+    profiles:
+      - mail
     depends_on:
       - nats
     build:
@@ -55,6 +59,8 @@ services:
       - nats
 
   gateway-http:
+    profiles:
+      - gateway-http
     depends_on:
       - nats
     build:

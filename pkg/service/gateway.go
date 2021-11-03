@@ -2,8 +2,6 @@ package service
 
 import (
 	"errors"
-
-	"github.com/gofiber/fiber/v2"
 )
 
 var (
@@ -13,7 +11,7 @@ var (
 // Request is an abstract interface that provides access to
 // to high level properties of the broker implementation.
 type Request struct {
-	Ctx *fiber.Ctx
+	Context interface{}
 
 	Service *Service
 }
@@ -28,7 +26,7 @@ type RequestHandler func(*Request) error
 type Gateway interface {
 	Bind(*Service)
 
-	Route(string, RequestHandler)
+	Route(RequestHandler)
 
 	Listen()
 }
