@@ -54,12 +54,12 @@ func (broker *NATS) Bind(svc *service.Service) {
 
 func (broker *NATS) Subscribe(endpoint string, endpointHandler service.EndpointHandler) error {
 	// Queue subscriptions that are made before connecting to the server.
-	if broker.natsConn == nil {
+	if broker.natsConn == nil || broker.service == nil {
 		broker.queuedSubscriptions[endpoint] = endpointHandler
 		return nil
 	}
 
-	subscription, err := broker.natsConn.Subscribe(endpoint, func(msg *nats.Msg) {
+	subscription, err := broker.natsConn.QueueSubscribe(endpoint, broker.service.Config.Name, func(msg *nats.Msg) {
 		event := cloudevents.NewEvent()
 		if err := json.Unmarshal(msg.Data, &event); err != nil {
 			broker.service.Logger.Error().Err(err).Msg("Failed to decode cloud event")
@@ -140,9 +140,21 @@ func (broker *NATS) Connect() error {
 	}
 	// Manually redact username and password rather than replacing it with xxx.
 	redacted.User = nil
+	redactedBrokerURI := redacted.String()
+
+	// Configure reconnection handlers.
+	extraOptions := []nats.Option{
+		nats.DisconnectErrHandler(func(nc *nats.Conn, err error) {
+			broker.service.Logger.Warn().Err(err).Msgf("Disconnected from broker: %s", redactedBrokerURI)
+		}),
+		nats.ReconnectHandler(func(nc *nats.Conn) {
+			broker.service.Logger.Info().Msgf("Reconnected to broker: %s", redactedBrokerURI)
+		}),
+	}
+	broker.options.NATSOptions = append(broker.options.NATSOptions, extraOptions...)
 
 	// Connect to NATS broker.
-	broker.service.Logger.Info().Msg("Broker URI: " + redacted.String())
+	broker.service.Logger.Info().Msgf("Broker URI: %s", redactedBrokerURI)
 	natsConn, err := nats.Connect(broker.options.URI, broker.options.NATSOptions...)
 	if err != nil {
 		return err
