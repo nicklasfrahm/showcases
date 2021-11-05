@@ -6,8 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nats-io/nats.go"
-
 	"github.com/nicklasfrahm/showcases/pkg/broker"
 	"github.com/nicklasfrahm/showcases/pkg/gateway"
 	"github.com/nicklasfrahm/showcases/pkg/service"
@@ -46,22 +44,16 @@ func main() {
 
 	// Configure broker connection.
 	svc.UseBroker(broker.NewNATS(&broker.NATSOptions{
-		URI: os.Getenv("BROKER_URI"),
-		NATSOptions: []nats.Option{
-			nats.Name(name),
-			nats.Timeout(1 * time.Second),
-			nats.PingInterval(5 * time.Second),
-			nats.MaxPingsOutstanding(6),
-		},
+		URI:            os.Getenv("BROKER_URI"),
 		RequestTimeout: 1 * time.Second,
 	}))
 
 	// Configure gateway.
 	svc.UseGateway(gateway.NewHTTP(gateway.Port(os.Getenv("PORT"))))
 
-	svc.GatewayEndpoint(NormalizeToChannel())
-	svc.GatewayEndpoint(AuthN(users))
-	svc.GatewayEndpoint(Gateway())
+	svc.GatewayMiddleware(NormalizeProtoToChannel())
+	svc.GatewayMiddleware(AuthN(users))
+	svc.GatewayMiddleware(DispatchToChannel())
 
 	// Wait until error occurs or signal is received.
 	svc.Start()

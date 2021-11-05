@@ -7,7 +7,6 @@ import (
 	"syscall"
 	"time"
 
-	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sys/unix"
@@ -30,16 +29,6 @@ type Service struct {
 	terminate chan bool
 }
 
-// Context is the structure of the data that is passed to an endpoint.
-type Context struct {
-	Service    *Service
-	Cloudevent *cloudevents.Event
-}
-
-// EndpointHandler describes the function signature of the functiona
-// that implements the logic for the service endpoint.
-type EndpointHandler func(*Context)
-
 // New returns a new service for the given configuration.
 func New(config Config) *Service {
 	log.Logger = log.Output(zerolog.ConsoleWriter{
@@ -47,13 +36,20 @@ func New(config Config) *Service {
 		TimeFormat: time.RFC3339,
 	})
 
-	return &Service{
+	// Create service instance.
+	svc := &Service{
 		Logger: &log.Logger,
 		Config: config,
 
 		signals:   make(chan os.Signal, 1),
 		terminate: make(chan bool, 1),
 	}
+
+	// Log basic service information.
+	svc.Logger.Info().Msgf("Service: %s", svc.Config.Name)
+	svc.Logger.Info().Msgf("Version: %s", svc.Config.Version)
+
+	return svc
 }
 
 func (svc *Service) UseBroker(b Broker) *Service {
@@ -78,28 +74,28 @@ func (svc *Service) UseGateway(g Gateway) *Service {
 	return svc
 }
 
-func (svc *Service) BrokerEndpoint(endpoint string, endpointHandler EndpointHandler) *Service {
-	// Ensure that a broker is configured when endpoints are defined.
+func (svc *Service) BrokerChannel(channel string, channelHandler ChannelHandler) *Service {
+	// Ensure that a broker is configured when channels are defined.
 	if svc.Broker == nil {
-		svc.Logger.Fatal().Err(ErrNoBrokerConfigured).Msg("Failed to register broker endpoint")
+		svc.Logger.Fatal().Err(ErrNoBrokerConfigured).Msg("Failed to register broker channel")
 	}
 
-	// Subscribe to broker endpoint.
-	if err := svc.Broker.Subscribe(endpoint, endpointHandler); err != nil {
-		svc.Logger.Fatal().Err(err).Msgf("Failed to register broker endpoint")
+	// Subscribe to broker channel.
+	if err := svc.Broker.Subscribe(channel, channelHandler); err != nil {
+		svc.Logger.Fatal().Err(err).Msgf("Failed to register broker channel")
 	}
 
-	// Log the registered endpoint.
-	svc.Logger.Info().Msg("Endpoint registered: " + endpoint)
+	// Log the registered channel.
+	svc.Logger.Info().Msgf("Channel registered: %s", channel)
 
 	// Return the service pointer to allow method chaining.
 	return svc
 }
 
-func (svc *Service) GatewayEndpoint(requestHandler RequestHandler) *Service {
+func (svc *Service) GatewayMiddleware(requestHandler RequestHandler) *Service {
 	// Ensure that a gateway is configured when endpoints are defined.
 	if svc.Gateway == nil {
-		svc.Logger.Fatal().Err(ErrNoGatewayConfigured).Msg("Failed to register gateway endpoint")
+		svc.Logger.Fatal().Err(ErrNoGatewayConfigured).Msg("Failed to register gateway middleware")
 	}
 
 	// Pass request handler to gateway.
@@ -114,10 +110,6 @@ func (svc *Service) Start() {
 	// Subscribe to OS signals and asynchronously await them in goroutine.
 	signal.Notify(svc.signals, syscall.SIGINT, syscall.SIGTERM)
 	go svc.awaitSignals()
-
-	// Log basic service information.
-	svc.Logger.Info().Msgf("Service: %s", svc.Config.Name)
-	svc.Logger.Info().Msgf("Version: %s", svc.Config.Version)
 
 	// Connect to broker if configured.
 	if svc.Broker != nil {
@@ -148,10 +140,11 @@ func (svc *Service) awaitSignals() {
 	svc.Logger.Info().Msg("Signal received: " + sigName)
 	svc.Logger.Info().Msg("Terminating ...")
 
+	// Gracefully shut down broker connection.
+	if err := svc.Broker.Disconnect(); err != nil {
+		svc.Logger.Warn().Err(err).Msg("Failed to disconnect from broker gracefully")
+	}
+
 	// Terminate process.
 	svc.terminate <- true
 }
-
-// TODO: Create convenience function that handler errors
-// by logging them. This allows to reduce the overhead
-// on the business logic side.

@@ -16,7 +16,7 @@ const (
 	LocalsType    = "type"
 )
 
-func NormalizeToChannel() service.RequestHandler {
+func NormalizeProtoToChannel() service.RequestHandler {
 	return func(r *service.Request) error {
 		ctx := r.Context.(*fiber.Ctx)
 		method := ctx.Method()
@@ -93,7 +93,7 @@ func AuthN(users map[string]string) service.RequestHandler {
 	}
 }
 
-func Gateway() service.RequestHandler {
+func DispatchToChannel() service.RequestHandler {
 	return func(r *service.Request) error {
 		ctx := r.Context.(*fiber.Ctx)
 

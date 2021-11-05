@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"os"
+	"regexp"
 	"time"
 
 	_ "github.com/joho/godotenv/autoload"
@@ -15,6 +16,10 @@ import (
 var (
 	name    = "unknown"
 	version = "dev"
+)
+
+var (
+	channelsRegExp = regexp.MustCompile(`^channels\..*`)
 )
 
 func main() {
@@ -36,34 +41,36 @@ func main() {
 		RequestTimeout: 20 * time.Millisecond,
 	}))
 
-	// Define catch-all endpoint for audit service.
-	svc.BrokerEndpoint(">", func(ctx *service.Context) {
-		subject := ctx.Cloudevent.Type()
+	// Define catch-all channel for audit service.
+	svc.BrokerChannel(">", func(ctx *service.Context) error {
+		channel := ctx.Cloudevent.Type()
 
-		// Omit response messages as they should be distributed via a dedicated type.
-		if subject == "response" {
-			return
+		// Omit logging the content for the following channels:
+		// - response
+		// - channels.*
+		if channel == "response" || channelsRegExp.MatchString(channel) {
+			return nil
 		}
 
 		// Park data in interface to allow encoding as JSON.
 		var data interface{}
 		if err := ctx.Cloudevent.DataAs(&data); err != nil {
-			ctx.Service.Logger.Error().Err(err).Msgf("Failed to load data from cloud event")
-			return
+			return err
 		}
 
 		if data == nil {
 			// There is no data. Just log the subject.
-			ctx.Service.Logger.Info().Msgf("%s", subject)
-			return
+			ctx.Service.Logger.Info().Msgf("%s", channel)
+			return nil
 		}
 
 		encoded, err := json.MarshalIndent(data, "", " ")
 		if err != nil {
-			ctx.Service.Logger.Error().Err(err).Msgf("Failed to encode data from cloud event")
+			return err
 		}
 
-		ctx.Service.Logger.Info().Msgf("%s\n%s", subject, string(encoded))
+		ctx.Service.Logger.Info().Msgf("%s\n%s", channel, string(encoded))
+		return nil
 	})
 
 	// Wait until error occurs or signal is received.

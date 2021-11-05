@@ -44,6 +44,7 @@ jobs:
           - audit
           - gateway-http
           - mail
+          - status
     steps:
       - name: Clone repository
         uses: actions/checkout@v2
@@ -125,6 +126,7 @@ jobs:
           - audit
           - gateway-http
           - mail
+          - status
     environment:
       name: production
     needs:

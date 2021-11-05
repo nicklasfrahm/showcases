@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ${SERVICE}-env
+  namespace: ${NAMESPACE}
+stringData:
+  BROKER_URI: nats://nats.${NAMESPACE}.svc:4222

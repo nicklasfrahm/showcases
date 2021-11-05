@@ -1,10 +1,9 @@
 package main
 
 import (
+	"errors"
 	"os"
 	"time"
-
-	"github.com/nats-io/nats.go"
 
 	"github.com/nicklasfrahm/showcases/pkg/broker"
 	"github.com/nicklasfrahm/showcases/pkg/mail"
@@ -14,6 +13,10 @@ import (
 var (
 	name    = "unknown"
 	version = "dev"
+)
+
+var (
+	ErrAllProvidersUnavailable = errors.New("mail: all providers unavailable")
 )
 
 func main() {
@@ -51,17 +54,11 @@ func main() {
 
 	// Configure broker connection.
 	svc.UseBroker(broker.NewNATS(&broker.NATSOptions{
-		URI: os.Getenv("BROKER_URI"),
-		NATSOptions: []nats.Option{
-			nats.Name(name),
-			nats.Timeout(1 * time.Second),
-			nats.PingInterval(5 * time.Second),
-			nats.MaxPingsOutstanding(6),
-		},
+		URI:            os.Getenv("BROKER_URI"),
 		RequestTimeout: 20 * time.Millisecond,
 	}))
 
-	svc.BrokerEndpoint("v1.services.mail.providers.find", func(ctx *service.Context) {
+	svc.BrokerChannel("services.mail.providers.find", func(ctx *service.Context) error {
 		// Fetch information about mail providers.
 		mailProviders := make([]mail.MailProvider, len(mailers))
 		i := 0
@@ -74,15 +71,13 @@ func main() {
 		// Send reply. Please note that the source is an opaque string
 		// that is used by the broker implementation to perform routing.
 		if err := ctx.Service.Broker.Publish(ctx.Cloudevent.Source(), mailProviders); err != nil {
-			ctx.Service.Logger.Error().Err(err).Msgf("Failed to respond")
+			return err
 		}
 		// Broadcast event.
-		if err := ctx.Service.Broker.Publish("v1.services.mail.providers.found", mailProviders); err != nil {
-			ctx.Service.Logger.Error().Err(err).Msgf("Failed to broadcast")
-		}
+		return ctx.Service.Broker.Publish("v1.services.mail.providers.found", mailProviders)
 	})
 
-	svc.BrokerEndpoint("v1.mails.create", func(ctx *service.Context) {
+	svc.BrokerChannel("mails.create", func(ctx *service.Context) error {
 		// Parse cloudevent and marshal it into a struct.
 		mail := new(mail.Mail)
 		if err := ctx.Cloudevent.DataAs(mail); err != nil {
@@ -90,7 +85,7 @@ func main() {
 			// to gateway like as 400 or 422, because the validation failed.
 			// This will just silently fail and cause the service to return
 			// error code 503, which is not very descriptive.
-			return
+			return nil
 		}
 
 		for _, mailer := range mailers {
@@ -108,18 +103,19 @@ func main() {
 			}
 		}
 
-		// Check status.
+		// If the mail provider was set, the email was sent sucessfully.
 		if mail.MailProvider != nil {
 			if err := ctx.Service.Broker.Publish(ctx.Cloudevent.Source(), mail); err != nil {
-				ctx.Service.Logger.Error().Err(err).Msgf("Failed to respond")
+				return err
 			}
-			return
 		}
 
 		// Broadcast unsent email.
-		if err := ctx.Service.Broker.Publish("v1.mails.unsent", mail); err != nil {
-			ctx.Service.Logger.Error().Err(err).Msgf("Failed to broadcast")
+		if err := ctx.Service.Broker.Publish("mails.unsent", mail); err != nil {
+			return err
 		}
+
+		return ErrAllProvidersUnavailable
 	})
 
 	// Wait until error occurs or signal is received.

@@ -1,4 +1,4 @@
 package broker
 
-// TODO: Implement no-op broker that will be used by
-// default when no broker is mounted.
+// TODO: Implement golang channel-based broker that
+// can be used for monolithic, single-binary apps.

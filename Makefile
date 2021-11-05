@@ -6,7 +6,7 @@ SVC_TARGETS	:= $(addprefix $(BIN_DIR)/,$(patsubst $(CMD_DIR)/%/,%,$(dir $(wildca
 SVC_SOURCES	:= $(shell find . -name "*.go")
 
 VERSION		?= dev
-PROFILES	?= audit,mail,gateway-http
+PROFILES	?= nats,audit,status,gateway-http,mail
 
 
 .PHONY: all up clean

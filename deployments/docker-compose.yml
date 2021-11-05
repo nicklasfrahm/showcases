@@ -36,6 +36,23 @@ services:
     networks:
       - nats
 
+  status:
+    profiles:
+      - status
+    depends_on:
+      - nats
+    build:
+      context: ../
+      dockerfile: ./build/package/service.dockerfile
+      args:
+        SERVICE: status
+        VERSION: ${VERSION:-dev}
+    restart: always
+    environment:
+      BROKER_URI: ${BROKER_URI:-nats://nats:4222}
+    networks:
+      - nats
+
   mail:
     profiles:
       - mail
