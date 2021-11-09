@@ -22,6 +22,8 @@ const EmailSender = () => {
     setRecipients(value);
   };
 
+  console.log(recipients);
+
   return (
     <Grid
       container
