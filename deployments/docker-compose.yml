@@ -1,23 +1,89 @@
-# TODO: Investigate how profiles can speed up the development process.
 version: "3"
 
 networks:
-  ingress:
+  external:
     driver: bridge
-  nats:
+  internal:
+
+volumes:
+  prometheus-data:
+  grafana-data:
+  nats-data:
 
 services:
+  prometheus:
+    profiles:
+      - prometheus
+    image: prom/prometheus
+    restart: always
+    command: --web.enable-lifecycle --config.file=/etc/prometheus/prometheus.yml
+    ports:
+      - 9090:9090
+    volumes:
+      - ${PWD}/configs/prometheus:/etc/prometheus
+      - prometheus-data:/prometheus
+    networks:
+      - internal
+      - external
+
+  grafana:
+    profiles:
+      - grafana
+    image: grafana/grafana
+    restart: always
+    ports:
+      - 3000:3000
+    volumes:
+      - ${PWD}/configs/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - grafana-data:/var/lib/grafana
+    networks:
+      - internal
+      - external
+
   nats:
+    depends_on:
+      - nats-metrics
     image: nats:alpine
     restart: always
     command: --jetstream --store_dir /var/lib/nats
     volumes:
-      - ${PWD}/.data/nats:/var/lib/nats
+      - nats-data:/var/lib/nats
     ports:
-      - "4222:4222"
+      - 4222:4222
     networks:
+      - internal
+      - external
+
+  nats-metrics:
+    image: natsio/prometheus-nats-exporter
+    restart: always
+    command: -varz -subz -channelz -connz -serverz -routez -jsz all http://nats:8222
+    ports:
+      - 7777:7777
+    networks:
+      - internal
+
+  gateway-http:
+    profiles:
+      - gateway-http
+    depends_on:
       - nats
-      - ingress
+    build:
+      context: ../
+      dockerfile: ./build/package/service.dockerfile
+      args:
+        SERVICE: gateway-http
+        VERSION: ${VERSION:-dev}
+    restart: always
+    environment:
+      BROKER_URI: ${BROKER_URI:-nats://nats:4222}
+      PORT: ${PORT:-8080}
+      AUTHORIZED_CREDENTIALS: ${AUTHORIZED_CREDENTIALS}
+    ports:
+      - ${PORT:-8080}:${PORT:-8080}
+    networks:
+      - internal
+      - external
 
   audit:
     profiles:
@@ -34,7 +100,7 @@ services:
     environment:
       BROKER_URI: ${BROKER_URI:-nats://nats:4222}
     networks:
-      - nats
+      - internal
 
   status:
     profiles:
@@ -51,7 +117,7 @@ services:
     environment:
       BROKER_URI: ${BROKER_URI:-nats://nats:4222}
     networks:
-      - nats
+      - internal
 
   mail:
     profiles:
@@ -73,26 +139,4 @@ services:
       SPARKPOST_HTTP_URI: ${SPARKPOST_HTTP_URI}
       MAIL_FROM: ${MAIL_FROM}
     networks:
-      - nats
-
-  gateway-http:
-    profiles:
-      - gateway-http
-    depends_on:
-      - nats
-    build:
-      context: ../
-      dockerfile: ./build/package/service.dockerfile
-      args:
-        SERVICE: gateway-http
-        VERSION: ${VERSION:-dev}
-    restart: always
-    environment:
-      BROKER_URI: ${BROKER_URI:-nats://nats:4222}
-      PORT: ${PORT:-8080}
-      AUTHORIZED_CREDENTIALS: ${AUTHORIZED_CREDENTIALS}
-    ports:
-      - "${PORT:-8080}:${PORT:-8080}"
-    networks:
-      - ingress
-      - nats
+      - internal

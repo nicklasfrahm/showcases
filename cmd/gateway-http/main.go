@@ -51,6 +51,7 @@ func main() {
 	// Configure gateway.
 	svc.UseGateway(gateway.NewHTTP(gateway.Port(os.Getenv("PORT"))))
 
+	svc.GatewayMiddleware(WebsocketStreams())
 	svc.GatewayMiddleware(NormalizeProtoToChannel())
 	svc.GatewayMiddleware(AuthN(users))
 	svc.GatewayMiddleware(DispatchToChannel())

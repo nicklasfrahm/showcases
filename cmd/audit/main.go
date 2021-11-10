@@ -7,7 +7,6 @@ import (
 	"time"
 
 	_ "github.com/joho/godotenv/autoload"
-	"github.com/nats-io/nats.go"
 
 	"github.com/nicklasfrahm/showcases/pkg/broker"
 	"github.com/nicklasfrahm/showcases/pkg/service"
@@ -31,18 +30,19 @@ func main() {
 
 	// Configure broker connection.
 	svc.UseBroker(broker.NewNATS(&broker.NATSOptions{
-		URI: os.Getenv("BROKER_URI"),
-		NATSOptions: []nats.Option{
-			nats.Name(name),
-			nats.Timeout(1 * time.Second),
-			nats.PingInterval(5 * time.Second),
-			nats.MaxPingsOutstanding(6),
-		},
+		URI:            os.Getenv("BROKER_URI"),
 		RequestTimeout: 20 * time.Millisecond,
 	}))
 
 	// Define catch-all channel for audit service.
-	svc.BrokerChannel(">", func(ctx *service.Context) error {
+	svc.BrokerChannel(">", CatchAll())
+
+	// Wait until error occurs or signal is received.
+	svc.Start()
+}
+
+func CatchAll() service.ChannelHandler {
+	return func(ctx *service.Context) error {
 		channel := ctx.Cloudevent.Type()
 
 		// Omit logging the content for the following channels:
@@ -71,8 +71,5 @@ func main() {
 
 		ctx.Service.Logger.Info().Msgf("%s\n%s", channel, string(encoded))
 		return nil
-	})
-
-	// Wait until error occurs or signal is received.
-	svc.Start()
+	}
 }

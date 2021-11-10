@@ -20,6 +20,7 @@ import (
 // TODO: Add a `.Reply()` function to the broker that handles replying more elegantly.
 // TODO: Add a `.Broadcast()` function that enables or disables broadcasting after handler completion.
 // TODO: Create a canonical channel format for responses (`*.response`), handler success (`*.success`) and handler failure (`*.failure`).
+// TODO: Implement functional options pattern: https://golang.cafe/blog/golang-functional-options-pattern.html
 
 const (
 	ChannelSubscribe   = "channels.create"

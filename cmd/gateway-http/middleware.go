@@ -120,3 +120,16 @@ func DispatchToChannel() service.RequestHandler {
 		return ctx.Send(res.Cloudevent.Data())
 	}
 }
+
+func WebsocketStreams() service.RequestHandler {
+	return func(r *service.Request) error {
+		ctx := r.Context.(*fiber.Ctx)
+
+		// Check if websockets should be served.
+		if ctx.Method() != http.MethodGet || ctx.Path() != "/websockets" {
+			return ctx.Next()
+		}
+
+		return ctx.Status(http.StatusOK).Send([]byte("Coming soon!"))
+	}
+}

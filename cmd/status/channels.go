@@ -6,6 +6,8 @@ import (
 	"github.com/nicklasfrahm/showcases/pkg/service"
 )
 
+// TODO: Use Redis to store state.
+
 var channels = map[string]*service.Channel{}
 var mutex = sync.Mutex{}
 
