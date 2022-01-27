@@ -102,7 +102,7 @@ jobs:
         uses: azure/setup-kubectl@v1
 
       - name: Install helm
-        uses: azure/setup-helm@v1
+        uses: azure/setup-helm@v2.0
 
       - name: Set up kubeconfig
         run: |
@@ -140,7 +140,7 @@ jobs:
         uses: azure/setup-kubectl@v1
 
       - name: Install helm
-        uses: azure/setup-helm@v1
+        uses: azure/setup-helm@v2.0
 
       - name: Set up kubeconfig
         run: |
