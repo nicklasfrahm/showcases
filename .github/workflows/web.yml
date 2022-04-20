@@ -57,7 +57,7 @@ jobs:
       name: github-pages
     steps:
       - name: Download static bundle
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: bundle
           path: public
